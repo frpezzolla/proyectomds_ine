@@ -22,7 +22,7 @@ data = {}
 #         sep=';'
 #     )
 
-logger.info('Importing year 2010')
+logger.info('importing year 2010')
 data = pd.read_csv(
     os.path.join(
         os.getcwd(),
