@@ -1,0 +1,97 @@
+
+#/******************************************************************************
+#
+#             Proyecto: Ajuste estacional tasa de desocupación ENE
+#             Autor: Carolina San Martín
+#             Tema: Seteo inicial de ambiente de trabajo en R
+#             Fecha versión: 08/06/2021
+#             Tipo de archivo: master
+#
+#
+#/******************************************************************************
+
+
+#### Seteo inicial (ejecutar sólo si se está generando estimaciones por fuera del proceso de generación de boletín)      =============
+#source(file = "//buvmfswinp01/ene2/Ajuste estacional/Scripts/Limpieza.R", encoding = "UTF-8")
+
+#### Generar tabla con datos históricos sólo si es necesario  ========================================================================
+#source(file = "//buvmfswinp01/ene2/Ajuste estacional/Scripts/HIST_Stocks.R", encoding = "UTF-8")
+
+#### Actualizar dataframe       ======================================================================================================
+source(file = "//buvmfswinp01/ene2/Ajuste estacional/Scripts/Actualización.R", encoding = "UTF-8")
+
+
+#### Generar regresiones para ajuste estacional ======================================================================================
+
+# Generar dataframes con las columnas del df y setearlas como serie de tiempo
+for(i in 3:10) {
+        name <- colnames(stock)[i]
+        i <- data.frame(stock[,i])
+        i <- ts(i, start = c(2010,2), frequency = 12, end = c(yy,mm))
+        assign(name, i)
+}
+
+# Ajuste en serie de hombres desocupados entre 15 y 24 años 
+source(file = "//buvmfswinp01/ene2/Ajuste estacional/Scripts/DH_15.R", encoding = "UTF-8")
+
+# Ajuste en serie de mujeres desocupadas entre 15 y 24 años 
+source(file = "//buvmfswinp01/ene2/Ajuste estacional/Scripts/DM_15.R", encoding = "UTF-8")
+
+# Ajuste en serie de hombres desocupados de 25 años y más 
+source(file = "//buvmfswinp01/ene2/Ajuste estacional/Scripts/DH_25.R", encoding = "UTF-8")
+
+# Ajuste en serie mujeres desocupadas 25 años y más
+source(file = "//buvmfswinp01/ene2/Ajuste estacional/Scripts/DM_25.R", encoding = "UTF-8")
+
+# Ajuste en serie de hombres ocupados entre 15 y 24 años 
+source(file = "//buvmfswinp01/ene2/Ajuste estacional/Scripts/OH_15.R", encoding = "UTF-8")
+
+# Ajuste en serie de mujeres ocupadas entre 15 y 24 años 
+source(file = "//buvmfswinp01/ene2/Ajuste estacional/Scripts/OM_15.R", encoding = "UTF-8")
+
+# Ajuste en serie de hombres ocupados 25 años o más 
+source(file = "//buvmfswinp01/ene2/Ajuste estacional/Scripts/OH_25.R", encoding = "UTF-8")
+
+# Ajuste en serie de mujeres ocupadas 25 años o más 
+source(file = "//buvmfswinp01/ene2/Ajuste estacional/Scripts/OM_25.R", encoding = "UTF-8")
+
+
+#### Terminar tabla con ajuste estacional (insumo final = SA)   =========================================================================
+
+# Total desocupados
+SA <- cbind(SA, desocupados_sa = rowSums(SA[,3:6]))
+#para verificar suma se debe usar esto: mpfr(SA$desocupados,50)
+
+# Total de ocupados
+SA <- cbind(SA, ocupados_sa = rowSums(SA[,7:10]))
+
+# Total de desocupados por sexo
+SA <- cbind(SA, dh_sa = rowSums(SA[,c("dh15_sa","dh25_sa")]))
+SA <- cbind(SA, dm_sa = rowSums(SA[,c("dm15_sa","dm25_sa")]))
+
+# Total de ocupados por sexo
+SA <- cbind(SA, oh_sa = rowSums(SA[,c("oh15_sa","oh25_sa")]))
+SA <- cbind(SA, om_sa = rowSums(SA[,c("om15_sa","om25_sa")]))
+
+# Total fuerza de trabajo por sexo
+SA <- cbind(SA, ft_h_sa = rowSums(SA[,c("dh_sa","oh_sa")]))
+SA <- cbind(SA, ft_m_sa = rowSums(SA[,c("dm_sa","om_sa")]))
+
+# Total FT
+SA <- cbind(SA, ft_sa = rowSums(SA[,c("desocupados_sa","ocupados_sa")]))
+
+# Total TD por sexo
+SA <- cbind(SA, td_h_sa = (SA$dh_sa/SA$ft_h_sa)*100)
+SA <- cbind(SA, td_m_sa = (SA$dm_sa/SA$ft_m_sa)*100)
+
+# Total TD
+SA <- cbind(SA, td_sa = (SA$desocupados_sa/SA$ft_sa)*100)        
+
+
+#### Ajustes finales para guardar       ==============================================================================================
+
+# Borrar elementos intemedios
+rm("f","m1","m2","a1","a2","ano","mes","seasonal","name","i")
+
+# Guardar
+save.image(file = paste0("//buvmfswinp01/ene2/Ajuste estacional/Salidas/Estimaciones/SA ",ntm," ",tm," ",yy,".RData"))
