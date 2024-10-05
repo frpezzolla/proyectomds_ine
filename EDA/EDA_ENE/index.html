@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desocupación ENE (Encuesta Nacional de Empleo)</title>
+    <!-- Importar la fuente Lora desde Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Enlazar el archivo CSS externo -->
+    <link rel="stylesheet" href="styles.css">
+    <!-- Incluir D3.js -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+
+<h2>Desocupación ENE (Encuesta Nacional de Empleo)</h2>
+
+<!-- Formulario de selección -->
+<div class="form-container">
+    <label for="variableSelect">Selecciona la variable:</label>
+    <select id="variableSelect">
+        <option value="sexo">Sexo</option>
+        <option value="tramo_edad">Tramo de Edad</option>
+        <option value="region">Región</option>
+        <option value="cine">Nivel Educativo</option>
+        <option value="proveedor">Proveedor</option>
+        <option value="cotizacion">Cotización Previsional</option>
+        <option value="estado_civil">Estado Civil</option>
+        <option value="tipo">Tipo de Estrato</option>
+        <option value="categoria_ocupacion">Categoría Ocupacional</option>
+    </select>
+
+    <label for="categorySelect">Selecciona la categoría:</label>
+    <select id="categorySelect">
+        <!-- Este select se actualizará dinámicamente según la variable seleccionada -->
+    </select>
+
+    <button id="updateChart">Actualizar Gráfico</button>
+</div>
+
+<div id="chart"></div>
+
+<script>
+// Etiquetas de las variables
+const labels = {
+    sexo: {1: 'Hombre', 2: 'Mujer'},
+    tramo_edad: {
+        1: '15 a 19 años', 2: '20 a 24 años', 3: '25 a 29 años', 4: '30 a 34 años',
+        5: '35 a 39 años', 6: '40 a 44 años', 7: '45 a 49 años', 8: '50 a 54 años',
+        9: '55 a 59 años', 10: '60 a 64 años', 11: '65 a 69 años', 12: '70 años o más'
+    },
+    region: {
+        1: 'Tarapacá', 2: 'Antofagasta', 3: 'Atacama', 4: 'Coquimbo', 5: 'Valparaíso', 
+        6: 'O\'Higgins', 7: 'Maule', 8: 'Biobío', 9: 'La Araucanía', 10: 'Los Lagos',
+        11: 'Aysén', 12: 'Magallanes', 13: 'Metropolitana', 14: 'Los Ríos', 15: 'Arica y Parinacota', 16: 'Ñuble'
+    },
+    cine: {
+        1: 'Nunca estudió', 2: 'Educación preescolar', 3: 'Educación primaria (nivel 1)', 
+        4: 'Educación primaria (nivel 2)', 5: 'Educación secundaria',
+        6: 'Educación Técnica (no Universitaria)', 7: 'Educación universitaria',
+        8: 'Post títulos y maestría', 9: 'Doctorado'
+    },
+    proveedor: {1: 'Proveedor principal'},
+    cotizacion: {1: 'Sí', 2: 'No'},
+    estado_civil: {
+        1: 'Casado/a', 2: 'Conviviente', 3: 'Soltero/a', 4: 'Viudo/a',
+        5: 'Separado/a de hecho', 6: 'Divorciado/a'
+    },
+    tipo: {1: 'Ciudad (CD)', 2: 'Resto de Área Urbana (RAU)', 3: 'Rural'},
+    categoria_ocupacion: {
+        1: 'Empleador', 2: 'Cuenta propia', 3: 'Asalariado sector privado', 
+        4: 'Asalariado sector público', 5: 'Personal de servicio doméstico puertas afuera', 
+        6: 'Personal de servicio doméstico puertas adentro', 7: 'Familiar o personal no remunerado'
+    }
+};
+
+// Actualizar el select de categorías según la variable seleccionada
+document.getElementById('variableSelect').addEventListener('change', function() {
+    const variable = this.value;
+    const categorySelect = document.getElementById('categorySelect');
+
+    // Limpiar las opciones previas
+    categorySelect.innerHTML = '';
+
+    // Añadir las nuevas opciones basadas en la variable seleccionada
+    const options = labels[variable];
+    for (const [key, value] of Object.entries(options)) {
+        const option = document.createElement('option');
+        option.value = key;
+        option.text = value;
+        categorySelect.appendChild(option);
+    }
+});
+
+// Inicializar las categorías cuando se carga la página
+document.getElementById('variableSelect').dispatchEvent(new Event('change'));
+
+// Función para generar el gráfico basado en la selección
+document.getElementById('updateChart').addEventListener('click', function() {
+    const variable = document.getElementById('variableSelect').value;
+    const category = document.getElementById('categorySelect').value;
+    const categoryLabel = labels[variable][category];
+
+    // Cargar los datos del CSV
+    d3.csv('combined_data_2024.csv', function(d) {
+        return {
+            date: new Date(d.fecha_encuesta),
+            frequency: +d.frequency,
+            [variable]: +d[variable]
+        };
+    }).then(data => {
+        // Filtrar los datos según la categoría seleccionada
+        const filteredData = data.filter(d => d[variable] == category);
+
+        // Agrupar por mes y contar la frecuencia
+        const groupedData = d3.rollup(filteredData, v => v.length, d => d3.timeMonth(d.date));
+        const dataArray = Array.from(groupedData, ([date, frequency]) => ({ date, frequency }));
+
+        // Limpiar el gráfico anterior
+        d3.select("#chart").selectAll("*").remove();
+
+        // Crear las escalas, aumentando el margen derecho
+        const margin = {top: 70, right: 150, bottom: 50, left: 70};
+        const width = 927 - margin.left - margin.right;
+        const height = 300 - margin.top - margin.bottom;
+
+        // Crear el SVG con márgenes extendidos
+        const svg = d3.select("#chart").append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        // Crear las escalas de tiempo y frecuencia
+        const x = d3.scaleTime().domain(d3.extent(dataArray, d => d.date)).range([0, width]);
+        const y = d3.scaleLinear().domain([0, d3.max(dataArray, d => d.frequency)]).range([height, 0]);
+
+        // Ejes
+        svg.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x));
+        svg.append("g").call(d3.axisLeft(y));
+
+        // Título de los ejes
+        svg.append("text")
+            .attr("x", width / 2)
+            .attr("y", height + 40)
+            .attr("text-anchor", "middle")
+            .attr("class", "axis-title")
+            .text("Fecha");
+
+        svg.append("text")
+            .attr("x", -height / 2)
+            .attr("y", -50)
+            .attr("text-anchor", "middle")
+            .attr("transform", "rotate(-90)")
+            .attr("class", "axis-title")
+            .text("Frecuencia");
+
+        // Línea azul antes de la pandemia y roja después
+        const line = d3.line()
+            .x(d => x(d.date))
+            .y(d => y(d.frequency));
+
+        // Separar los datos antes y después de enero de 2020
+        const before2020 = dataArray.filter(d => d.date < new Date('2020-01-01'));
+        const after2020 = dataArray.filter(d => d.date >= new Date('2020-01-01'));
+
+        // Línea azul con animación
+        const blueLine = svg.append("path")
+            .datum(before2020)
+            .attr("fill", "none")
+            .attr("stroke", "#1f77b4")  // Azul para que coincida con los puntos
+            .attr("stroke-width", 2)
+            .attr("d", line)
+            .attr("stroke-dasharray", function() { return this.getTotalLength(); })
+            .attr("stroke-dashoffset", function() { return this.getTotalLength(); })
+            .transition()
+            .duration(3000)
+            .attr("stroke-dashoffset", 0);
+
+        // Línea roja con animación
+        const redLine = svg.append("path")
+            .datum(after2020)
+            .attr("fill", "none")
+            .attr("stroke", "red")
+            .attr("stroke-width", 2)
+            .attr("d", line)
+            .attr("stroke-dasharray", function() { return this.getTotalLength(); })
+            .attr("stroke-dashoffset", function() { return this.getTotalLength(); })
+            .transition()
+            .duration(2000)
+            .attr("stroke-dashoffset", 0)
+            .delay(3000);  // Animar después de que la línea azul termine
+
+        // Animar los puntos progresivamente
+        function animateDots(data, color, duration, delay) {
+            svg.selectAll(`.dot.${color}`)
+                .data(data)
+                .enter().append("circle")
+                .attr("class", `dot ${color}`)
+                .attr("cx", d => x(d.date))
+                .attr("cy", d => y(d.frequency))
+                .attr("r", 0)
+                .transition()
+                .duration(duration / data.length)
+                .ease(d3.easeLinear)
+                .delay((d, i) => i * (duration / data.length) + delay)
+                .attr("r", 4);  // Puntos visibles
+        }
+
+        // Animar los puntos azules
+        animateDots(before2020, "blue", 3000, 0);
+
+        // Animar los puntos rojos
+        animateDots(after2020, "red", 2000, 3000);
+
+        // Línea verde para la pandemia
+        svg.append("line")
+            .attr("x1", x(new Date('2020-01-01')))
+            .attr("x2", x(new Date('2020-01-01')))
+            .attr("y1", 0)
+            .attr("y2", height)
+            .attr("stroke", "green")
+            .attr("stroke-width", 2)
+            .attr("stroke-dasharray", "4 2");
+
+        // Crear un grupo para la anotación fuera del gráfico, en la parte superior
+        const annotationGroup = svg.append("g")
+            .attr("transform", `translate(${x(new Date('2020-01-01')) - 30}, -40)`);  // Ajuste de la posición superior
+
+        // Fondo amarillo para el texto "Inicio de la pandemia"
+        annotationGroup.append("rect")
+            .attr("width", 170)
+            .attr("height", 25)
+            .attr("fill", "yellow")
+            .attr("stroke", "black");
+
+        // Texto de la anotación
+        annotationGroup.append("text")
+            .attr("x", 10)
+            .attr("y", 18)
+            .attr("class", "annotation")
+            .style("font-size", "14px")  // Aumentar el tamaño del texto
+            .style("font-weight", "bold")  // Poner en negrita
+            .text("Inicio de la pandemia");
+
+        // Añadir una flecha apuntando a la línea verde desde arriba
+        svg.append("line")
+            .attr("x1", x(new Date('2020-01-01')))
+            .attr("y1", -15)
+            .attr("x2", x(new Date('2020-01-01')))
+            .attr("y2", 0)
+            .attr("stroke", "black")
+            .attr("stroke-width", 1)
+            .attr("marker-end", "url(#arrow)");
+
+        // Crear un marcador de flecha
+        svg.append("defs").append("marker")
+            .attr("id", "arrow")
+            .attr("viewBox", "0 0 10 10")
+            .attr("refX", 5)
+            .attr("refY", 5)
+            .attr("markerWidth", 6)
+            .attr("markerHeight", 6)
+            .attr("orient", "auto")
+            .append("path")
+            .attr("d", "M 0 0 L 10 5 L 0 10 z")
+            .attr("fill", "black");
+    });
+});
+
+</script>
+
+</body>
+</html>
