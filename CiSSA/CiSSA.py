@@ -55,6 +55,28 @@ import matplotlib.pyplot as plt
 from pycissa import cissa, group
 
 def date_to_index(data):
+    """
+    Converts the 'Año' and 'Trimestre' columns into a datetime index.
+
+    Parameters
+    ----------
+    data : pandas.DataFrame
+        The DataFrame containing columns 'Año' (year) and 'Trimestre' (quarter).
+        Assumes that the year and quarter columns are at the top level of 
+        a MultiIndex column structure.
+
+    Returns
+    -------
+    pandas.DataFrame
+        DataFrame with a new 'Date' column converted to a DateTime index.
+        The original 'Año' and 'Trimestre' columns are dropped, and the
+        DataFrame is sorted by the new Date index.
+
+    Notes
+    -----
+    - The function remaps quarter names (e.g., 'Dic - Feb') into an integer 
+      code for easier conversion to datetime.
+    """
     df = data.copy()
     trim_date = dict(zip(df[("Trimestre", np.nan)].unique(), (np.arange(12, 0, -1) - 7) % 12 + 1001))
     trim_date = {k: str(v).replace("100", "0").replace("101", "1") for k, v in trim_date.items()}
@@ -66,66 +88,74 @@ def date_to_index(data):
     df.sort_index(inplace=True)
     return df
 
-def get_cissa(L=12, force_cissa=False):
+import warnings
+
+def get_cissa(series, L=12, use_max_L=False):
     """
-    Perform CiSSA decomposition on a time series and optionally load or save results.
+    Perform Circulant Singular Spectrum Analysis (CiSSA) decomposition on the 
+    input time series with dynamic window length adjustment.
+    
+    This function applies CiSSA to decompose the input `series` into its 
+    reconstructed components, such as trend, seasonality, long-term cycles, 
+    and noise. The window length `L` can be manually set, or it can be 
+    dynamically adjusted to half the length of the time series minus one 
+    (`T/2 - 1`), ensuring that `L` is a multiple of 12.
 
     Parameters
     ----------
+    series : pandas Series or numpy array
+        The input time series data to decompose.
     L : int, optional
-        The window length for CiSSA decomposition, by default 12.
-        Affects the size of the portion of the series used for analyzing
-        each component.
-        
-    force_cissa : bool, optional
-        If `True`, forces the computation of CiSSA and saves the result to a file
-        regardless of whether a precomputed result exists. If `False`, it first
-        checks if a previous result file exists and loads it. If no such file
-        is found, it performs the CiSSA decomposition and saves the result.
-        By default False.
-
+        The window length for CiSSA decomposition. Default is 12.
+    use_max_L : bool, optional
+        If True, sets `L` to the maximum allowable value based on the length 
+        of the time series, calculated as `(T/2 - 1)//12 * 12`. Default is False.
+    
+    Raises
+    ------
+    ValueError
+        If `L` is greater than or equal to half the length of the series.
+    
+    Warnings
+    --------
+    UserWarning
+        If `L` is not a multiple of 12, a warning is issued and the function 
+        returns without performing the computation.
+    
     Returns
     -------
     rc : dict
-        A dictionary containing the components of the decomposed time series,
-        such as 'trend', 'seasonality', 'long term cycle', and 'noise'.
-        
-    Notes
-    -----
-    - The results of the decomposition are saved as a pickle file named 
-      `cissa_L{L}.pkl`, where `L` is the value of the window length.
-    - This function checks for existing files to avoid redundant computation,
-      thus speeding up analysis when working with large datasets.
-    - If force_cissa is True, it will recompute CiSSA and overwrite any 
-      existing result file.
+        A dictionary containing the reconstructed components from CiSSA, 
+        such as trend, seasonality, long-term cycles, and noise.
+    
+    Example Usage
+    -------------
+    >>> result = get_cissa(my_series, L=24, use_max_L=True)
+    >>> trend = result['trend']
+    """
+    
+    T = series.shape[0]
 
-    Examples
-    --------
-    To compute and store the CiSSA results for L=12:
-    >>> rc_L12 = get_cissa(L=12, force_cissa=True)
-
-    To load previously computed results if they exist:
-    >>> rc_L12 = get_cissa(L=12, force_cissa=False)
-    """   
-    filename = f"cissa_L{L}.pkl"
-    if not force_cissa and os.path.exists(filename):
-        print(f"Loading precomputed CiSSA result from {filename}")
-        with open(filename, 'rb') as file:
-            rc = pickle.load(file)
-        return rc
+    if use_max_L:
+        L = (T//2 - 1)//12 * 12
+    
+    if L % 12 != 0:
+        warnings.warn("L must be a multiple of 12", UserWarning)
+        return
+    
+    if L >= T:
+        raise ValueError(f"The window length must be less than T/2. Currently L = {L}, T = {T}")
     
     print(f"Computing CiSSA for L={L}")
-    Z, psd = cissa(tasa, L, multi_thread_run=False)
+    Z, psd = cissa(series, L, multi_thread_run=False)
     data_per_year = 12
     rc, sh, kg = group(Z, psd, data_per_year)
     
-    with open(filename, 'wb') as file:
-        pickle.dump(rc, file)
-    print(f"Saved CiSSA result to {filename}")
     return rc
 
+
 # Plot CiSSA components
-def plot_cissa(L=12):
+def plot_cissa(series, L=12):
     """
     Visualize the components of CiSSA decomposition for a given time series.
 
@@ -152,7 +182,7 @@ def plot_cissa(L=12):
     To plot CiSSA decomposition with a window length of 72:
     >>> plot_cissa(L=72)
     """
-    rc = get_cissa(L=L, force_cissa=False)
+    rc = get_cissa(series, L=L, force_cissa=False)
     
     fig, axs = plt.subplots(5, 1, figsize=(10, 12), sharex=True)
     
@@ -194,4 +224,4 @@ pdata.columns = pd.Index(map(str.strip, pdata.columns.get_level_values(0) + " " 
 tasa = pdata["Tasa ajustada MJJ2024"]
 
 if __name__ == '__main__':
-    plot_cissa(L=12)
+    plot_cissa(tasa, L=12)
