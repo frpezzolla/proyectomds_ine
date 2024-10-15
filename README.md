@@ -11,3 +11,6 @@
 
 ## CiSSA
 - [pyCiSSA](https://github.com/LukeAFullard/pyCiSSA.git): Python implementation for Circulant Singular Spectrum Analysis made by LukeAFullard.
+
+## Additional requirements
+- For Windows, the instalation of Microsoft Visual C++ 14.0 or greater is required by the ```spectrum``` library, a dependency of pyCiSSA. It can be installed from the link shown in the Error message, or from [this link](https://visualstudio.microsoft.com/visual-cpp-build-tools/).
