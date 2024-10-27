@@ -14,7 +14,7 @@ warnings.simplefilter('ignore', category=ValueWarning)
 
 
 x13as_path = path.abspath("C:/Program Files/x13as")
-class OutlierAnalisys():
+class OutlierAnalysis():
     """
     Analyze an 
     :params: 
