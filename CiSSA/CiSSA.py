@@ -179,7 +179,7 @@ def plot_cissa(series, L=12):
     To plot CiSSA decomposition with a window length of 72:
     >>> plot_cissa(L=72)
     """
-    rc = get_cissa(series, L=L, force_cissa=False)
+    rc = get_cissa(series, L=L)
     
     fig, axs = plt.subplots(5, 1, figsize=(10, 12), sharex=True)
     
