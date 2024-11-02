@@ -148,7 +148,7 @@ def get_cissa(series, L=12, use_max_L=True):
     data_per_year = 12
     rc, sh, kg = group(Z, psd, data_per_year)
     
-    return rc
+    return rc, sh, kg
 
 
 # Plot CiSSA components
@@ -179,7 +179,7 @@ def plot_cissa(series, L=12):
     To plot CiSSA decomposition with a window length of 72:
     >>> plot_cissa(L=72)
     """
-    rc = get_cissa(series, L=L)
+    rc, _, _ = get_cissa(series, L=L)
     
     fig, axs = plt.subplots(5, 1, figsize=(10, 12), sharex=True)
     
