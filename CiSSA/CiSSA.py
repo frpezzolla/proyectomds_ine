@@ -88,9 +88,7 @@ def date_to_index(data):
     df.sort_index(inplace=True)
     return df
 
-import warnings
-
-def get_cissa(series, L=12, use_max_L=False):
+def get_cissa(series, L=12, use_max_L=True):
     """
     Perform Circulant Singular Spectrum Analysis (CiSSA) decomposition on the 
     input time series with dynamic window length adjustment.
@@ -139,12 +137,11 @@ def get_cissa(series, L=12, use_max_L=False):
     if use_max_L:
         L = (T//2 - 1)//12 * 12
     
-    if L % 12 != 0:
-        warnings.warn("L must be a multiple of 12", UserWarning)
-        return
-    
-    if L >= T:
-        raise ValueError(f"The window length must be less than T/2. Currently L = {L}, T = {T}")
+    else:
+        if L % 12 != 0:
+            raise ValueError("L must be a multiple of 12")
+        if L >= T:
+            raise ValueError(f"The window length must be less than T/2. Currently L = {L}, T = {T}")
     
     print(f"Computing CiSSA for L={L}")
     Z, psd = cissa(series, L, multi_thread_run=False)
