@@ -1,55 +1,62 @@
 import argparse
 import pandas as pd
+from CiSSA.CiSSA import get_cissa
 
 def process_csv(input_file, output_file, do_x13=True, do_stl=False, do_cissa=False):
     """
-    Reads data from an input CSV file, processes it using specified methods, 
-    and saves the results to an output file.
+    Reads data from an input CSV file, processes it using specified decomposition 
+    methods, and saves the results to an output file.
 
     Parameters:
-    - input_file: Path to the CSV file containing the data.
-    - output_file: Path to the file where processed results will be saved.
-    - do_x13: If True, run X13 decomposition.
-    - do_stl: If True, run STL decomposition.
-    - do_cissa: If True, run CiSSA decomposition.
+    - input_file (str): Path to the CSV file containing the data.
+    - output_file (str): Path to the file where processed results will be saved.
+    - do_x13 (bool): If True, run X13 decomposition.
+    - do_stl (bool): If True, run STL decomposition.
+    - do_cissa (bool): If True, run CiSSA decomposition.
     """
-    # Read data from CSV
+    # Load the input CSV into a DataFrame
     data = pd.read_csv(input_file)
     
+    # Placeholder for storing results from each decomposition method
     results = []
 
-    # Process data based on selected options
+    # Run X13 decomposition if specified
     if do_x13:
-        print("Running X13 decomposition...")
-        # X13 processing code here
-        results.append("X13 results")
+        # TODO: Call the X13 decomposition function, add trend to DataFrame
+        pass
 
+    # Run STL decomposition if specified
     if do_stl:
-        print("Running STL decomposition...")
-        # STL processing code here
-        results.append("STL results")
+        # TODO: Call the STL decomposition function, add trend to DataFrame
+        pass
 
+    # Run CiSSA decomposition if specified
     if do_cissa:
-        print("Running CiSSA decomposition...")
-        # CiSSA processing code here
-        results.append("CiSSA results")
+        # Call get_cissa function, retrieve results, and add to DataFrame
+        rc, sh, kg = get_cissa(data)
+        # TODO: Process rc, sh, and kg to extract trends and other components
 
-    # Save results to the output file
-    with open(output_file, 'w') as file:
-        file.write("\n".join(results))
-    print(f"Results saved to {output_file}")
+    # TODO: Concatenate results back to the DataFrame (e.g., trend columns)
+    
+    # Save the processed DataFrame with added columns to the output CSV
+    data.to_csv(output_file, index=False)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Process CSV data with selected decomposition methods.")
-    
-    parser.add_argument("-i", "--input", type=str, required=True, help="Path to the input CSV file containing the data.")
-    parser.add_argument("-o", "--output", type=str, required=True, help="Path to the output file to save the processed results.")
-    
-    parser.add_argument("--do_x13", action="store_true", help="Run X13 decomposition.")
-    parser.add_argument("--do_stl", action="store_true", help="Run STL decomposition.")
-    parser.add_argument("--do_cissa", action="store_true", help="Run CiSSA decomposition.")
+    parser = argparse.ArgumentParser(
+        description="Process CSV data with optional X13, STL, and CiSSA methods."
+    )
+    parser.add_argument('-i', '--input', type=str, default='default_input.csv', help='Input CSV file')
+    parser.add_argument('-o', '--output', type=str, default='default_output.csv', help='Output CSV file')
+    parser.add_argument('--x13', action='store_true', help='Run X13 processing')
+    parser.add_argument('--stl', action='store_true', help='Run STL processing')
+    parser.add_argument('--cissa', action='store_true', help='Run CiSSA processing')
 
     args = parser.parse_args()
 
-    # Call process_csv with arguments based on parsed command-line options
-    process_csv(input_file=args.input, output_file=args.output, do_x13=args.do_x13, do_stl=args.do_stl, do_cissa=args.do_cissa)
+    process_csv(
+        input_file=args.input,
+        output_file=args.output,
+        do_x13=args.x13,
+        do_stl=args.stl,
+        do_cissa=args.cissa
+    )
