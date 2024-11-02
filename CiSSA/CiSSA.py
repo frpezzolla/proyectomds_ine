@@ -1,9 +1,64 @@
 """
 CiSSA Decomposition and Visualization of Time Series Data
 
-This script performs the following tasks:
+This script is designed to perform time series decomposition using Circulant Singular Spectrum Analysis (CiSSA),
+and provides functionality for data loading, preprocessing, decomposition, and visualization of results. It is 
+intended to be used as both a standalone script and as a module import within a larger project.
 
-[Your original description here]
+**Functionality Overview**
+
+1. **Data Loading and Preprocessing**:
+   - Loads historical time series data from an Excel file.
+   - Converts "Trimestre" (quarter) and "Año" (year) columns into a time-indexed DataFrame.
+   - Reformats columns and sets a date index for time series analysis.
+
+2. **Time Series Decomposition using CiSSA**:
+   - Decomposes the series into components such as:
+     - Trend: Long-term progression.
+     - Seasonality: Recurring seasonal patterns.
+     - Long-term cycle: Longer cyclic behavior.
+     - Noise: Random fluctuations.
+
+3. **Caching of CiSSA Results**:
+   - Saves results to avoid recomputation.
+   - Recomputes only if `force_cissa` is set to `True`; otherwise, loads saved results if available.
+
+4. **Visualization**:
+   - Generates a plot consisting of five subplots representing the decomposition:
+     - Trend
+     - Seasonality
+     - Long-term cycle
+     - Noise
+     - Original series (Tasa ajustada MJJ2024)
+
+5. **Script Parameters**:
+   - `L`: Window length for CiSSA decomposition, allowing tuning of component granularity.
+   - `force_cissa`: Boolean flag to force recalculation of CiSSA results or load from cache.
+
+6. **Dependencies**:
+   - `pandas`: For data manipulation and preprocessing.
+   - `matplotlib.pyplot`: For visualizing time series components.
+   - `numpy`: For numerical operations.
+   - `pycissa`: Provides the core CiSSA decomposition functions.
+   - `pickle`: To save and load decomposition results.
+
+**Usage Examples**
+
+- As a standalone script:
+    - Run the script directly to load, process, decompose, and plot a specified time series from the data file.
+- As a module import:
+    - Import the `get_cissa` function for decomposition or `plot_cissa` for visualization within another script.
+
+**Error Handling**
+
+- Warnings are issued if window length `L` is not a multiple of 12, and the function will return without computation.
+- A `ValueError` is raised if `L` exceeds half the length of the time series.
+
+**Script Execution**
+
+When run as a standalone script, the script loads example data, processes it, and visualizes the CiSSA decomposition 
+for the "Tasa ajustada MJJ2024" time series.
+
 """
 
 import os
