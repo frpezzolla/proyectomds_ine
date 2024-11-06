@@ -1,4 +1,4 @@
-# Herramienta de Descomposición de Series de Tiempo para el INE
+# Proyecto de Ciencia de Datos: Ajuste estacional de la tasa de desocupación para el Instituto Nacional de Estadísticas
 
 ## Descripción del Proyecto
 
@@ -33,7 +33,7 @@ La herramienta permite desestacionalizar las series de empleo y desempleo, calcu
 ## Instalación
 
 ### Requisitos Previos
-
+- Windows
 - **Python 3.8 o superior**
 - Instalador de paquetes **pip**
 - **Git** (opcional, para clonar el repositorio)
@@ -48,10 +48,6 @@ Los paquetes de Python requeridos se enumeran en el archivo `requirements.txt` e
 - `statsmodels`
 - `scipy`
 - `pycissa` (desde el repositorio `pyCiSSA`)
-
-#### Requisitos Adicionales para Windows
-
-Para usuarios de Windows, se requiere la instalación de **Microsoft Visual C++ 14.0** o superior debido a que la biblioteca `spectrum`, una dependencia de `pycissa`, lo necesita. Puede instalarlo desde [Microsoft Visual C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/). Para detalles sobre qué instalar, consulte [esta guía](https://www.scivision.dev/python-windows-visual-c-14-required/).
 
 ### Pasos de Instalación
 
@@ -74,14 +70,6 @@ Para usuarios de Windows, se requiere la instalación de **Microsoft Visual C++ 
    ```bash
    pip install -r requirements.txt
    ```
-
-4. **Instalar pyCiSSA**
-
-   ```bash
-   pip install git+https://github.com/LukeAFullard/pyCiSSA.git
-   ```
-
-   > **Nota**: Asegúrese de tener Git instalado para clonar el repositorio `pyCiSSA`.
 
 ### Configuración de X13-ARIMA-SEATS
 
@@ -132,12 +120,6 @@ La herramienta se ejecuta a través del script `main.py` con las siguientes opci
 
 ### Formato de los Datos de Entrada
 
-El archivo CSV de entrada debe contener las siguientes columnas:
-
-- `date`: Fechas en un formato reconocido por pandas (por ejemplo, `YYYY-MM-DD`).
-- `employment`: Datos de empleo como valores numéricos.
-- `unemployment`: Datos de desempleo como valores numéricos.
-
 ### Ejemplos
 
 #### Ejemplo 1: Aplicar Todos los Métodos de Descomposición con Generación de Gráficos
@@ -176,41 +158,25 @@ python main.py -i data/datos_empleo.csv --stl
 proyectomds_ine/
 ├── README.md
 ├── requirements.txt
-├── setup.py
 ├── main.py
 ├── data/
 │   └── (archivos de datos de entrada)
-├── src/
+├── diagnostics/
+│   ├── __init__.py
+│   ├── sliding_spans.py
+│   ├── revisions_history_diagnostics.py
+│   ├── outlier_prediction.py
+│   └── plotting.py
+├── logs/
+│   └── (archivos de registro)
+├── models/
 │   ├── __init__.py
 │   ├── cissa.py
 │   ├── x13.py
-│   ├── stl.py
-│   ├── plotting.py
-│   └── utils.py
-├── tests/
-│   ├── __init__.py
-│   ├── test_cissa.py
-│   ├── test_x13.py
-│   ├── test_stl.py
-│   └── test_utils.py
-├── logs/
-│   └── (archivos de registro)
+│   └── stl.py
 └── plots/
     └── (gráficos generados)
 ```
-
-## Contribuciones
-
-Agradecemos las contribuciones de la comunidad. Para contribuir:
-
-1. **Haz un fork** del repositorio.
-2. **Crea una nueva rama** para tu característica o corrección de errores.
-3. Escribe **mensajes de commit claros y descriptivos**.
-4. Asegúrate de que tu código cumple con los **estándares de codificación** del proyecto.
-5. Escribe **pruebas unitarias** para la nueva funcionalidad.
-6. Envía un **pull request** al repositorio principal.
-
-Por favor, consulta el archivo `CONTRIBUTING.md` para obtener directrices detalladas.
 
 ## Licencia
 
@@ -220,17 +186,21 @@ Este proyecto está licenciado bajo la **Licencia MIT**. Consulta el archivo `LI
 
 Para cualquier pregunta o soporte, por favor contacta a:
 
-- **Coordinador del Proyecto**: Rodrigo Molina
-  - Correo electrónico: [rodrigo.molina@ejemplo.com](mailto:rodrigo.molina@ejemplo.com)
+- Alonso Uribe
+  - Correo electrónico: [mail]()
+  - GitHub: [link]()
+- Fabrizzio Pezzolla
+  - Correo electrónico: [mail]()
+  - GitHub: [link]()
+- Israel Astudillo
+  - Correo electrónico: [mail]()
+  - GitHub: [link]()
+- Rodrigo Molina
+  - Correo electrónico: [mail]()
+  - GitHub: [link]()
 
 ## Agradecimientos
 
 - **pyCiSSA**: [pyCiSSA](https://github.com/LukeAFullard/pyCiSSA.git) por Luke A. Fullard.
 - **X13-ARIMA-SEATS**: Proporcionado por la Oficina del Censo de EE. UU.
 - **Descomposición STL**: Implementada utilizando la biblioteca `statsmodels`.
-
----
-
-Por favor, asegúrate de tener los permisos apropiados para usar y distribuir los datos y software incluidos en este proyecto.
-
----

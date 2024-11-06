@@ -34,6 +34,10 @@ def apply_cissa(series, verbose=False):
     except Exception as e:
         logging.error(f"CiSSA decomposition failed: {e}")
         return None
+    
+def run_diagnostics():
+    
+    return
 
 def plot_series(original_series, trend_series, method_name, output_dir, usetex=False):
     """Plot the original and trend series."""
@@ -70,6 +74,7 @@ def main(args):
     os.makedirs(args.plot_dir, exist_ok=True)
     os.makedirs(args.log_dir, exist_ok=True)
 
+    # =========================================================================
     # Import data
     try:
         data = pd.read_csv(args.input)
@@ -97,6 +102,7 @@ def main(args):
     employment_trends = {}
     unemployment_trends = {}
 
+    # =========================================================================
     # Apply STD methods
     if args.x13:
         logging.info("Applying X13-ARIMA-SEATS decomposition...")
@@ -118,7 +124,11 @@ def main(args):
         logging.info("Applying CiSSA decomposition...")
         employment_trends['cissa'] = apply_cissa(employment_series, verbose=args.verbose)
         unemployment_trends['cissa'] = apply_cissa(unemployment_series, verbose=args.verbose)
-
+        
+    # =========================================================================
+    # Run diagnostics
+    
+    # =========================================================================
     # Calculate unemployment rates
     results = pd.DataFrame(index=data.index)
     results['employment'] = employment_series
@@ -137,7 +147,8 @@ def main(args):
                 plot_series(results['unemployment_rate_raw'], results[f'unemployment_rate_{method}'], f'Unemployment_Rate_{method}', args.plot_dir, usetex=args.usetex)
         else:
             logging.warning(f"Trend components for '{method}' are None. Skipping unemployment rate calculation.")
-
+    
+    # =========================================================================
     # Save results
     output_file = os.path.join(args.output_dir, args.output)
     try:
@@ -168,3 +179,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(args)
+
+
+# python main.py input_file output_file --x13 --stl --cissa --verbose
