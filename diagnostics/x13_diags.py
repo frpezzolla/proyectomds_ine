@@ -7,11 +7,25 @@ from plotly import graph_objects as go
 import warnings
 from statsmodels.tools.sm_exceptions import X13Warning, ConvergenceWarning, ValueWarning, X13Error
 from sklearn.metrics import mean_squared_error
-
+# from ..tools.exceptions import FormatoFechaError
 warnings.simplefilter('ignore', category=X13Warning)
 warnings.simplefilter('ignore', category=ConvergenceWarning)
 warnings.simplefilter('ignore', category=UserWarning)
 warnings.simplefilter('ignore', category=ValueWarning)
+
+
+def check_format(date):
+    if isinstance(date, pd.Timestamp): 
+        return date
+    allowed_format = ["%Y-%m-%d", "%Y%m%d", "%Y/%m/%d"]
+    error = None
+    for format in allowed_format:
+        try:
+            return pd.to_datetime(str(date), format=format)
+        except ValueError as e:
+            error = e
+    else:
+        raise error
 
 x13as_path = path.abspath("C:/Program Files/x13as")
 class SlidingSpans():
@@ -87,20 +101,74 @@ class SlidingSpans():
         return self.A_metric, self.MM_metric
 
 class RevisionHistory():
-    def __init__(self) -> None:
-        pass
+    def __init__(self, model) -> None:
+        self.model = model
+        self.A = None
+        self.C = None
+        self.T = None
+
+    def fit(self, serie:pd.Series):
+        origin = serie.copy()
+        A = pd.DataFrame(index=origin.index)
+        for date_n in serie.index[3:]:
+            subserie_n = origin[:date_n]
+            try:
+                if self.model.__name__== 'x13_arima_analysis':
+                    x13j = self.model(
+                        endog=subserie_n,
+                        maxorder=(1,1),
+                        x12path=x13as_path,
+                        outlier=False)
+                An = x13j.seasadj.rename(f'A*|[{date_n.date()}]')
+                A = pd.concat([A, An], axis=1)
+            except X13Error as e:
+                pass
+        if A.empty or len(A.columns)<2:
+            raise X13Error("Serie muy corta para relizar diagnóstico")
+        self.A = A.replace(np.nan, pd.NA).copy()
+        self.C = ((self.A - self.A.shift(1)) / self.A.shift(1)).replace(np.nan, pd.NA).dropna(how='all', axis=0).copy()
+        self.C.columns = pd.Series(self.A.columns).apply(lambda name: name.replace('A', 'C'))
+        self.T = origin.index[-1]
+        return self
+    
+    def _A_n(self, n):
+        n = check_format(n)
+        if n.day != 1: raise ValueError(f"Columna empieza con el primer día del mes. Fecha entregada: {n.date()}")
+        return self.A[f'A*|[{n.date()}]'].copy()
+    
+    def _C_n(self, n):
+        n = check_format(n)
+        if n.day != 1: raise ValueError(f"Columna empieza con el primer día del mes. Fecha entregada: {n.date()}")
+        return self.C[f'C*|[{n.date()}]'].copy()
+
+    def A_change(self, n_final, n_init):
+        A_init = self._A_n(n_init)
+        return (self._A_n(n_final) - A_init) / A_init
+    
+    def C_change(self, n_final, n_init):
+        return self._C_n(n_final) - self._C_n(n_init)
+
+    def R_value(self, t):
+        return self.An_change(self.T, t).iloc[-1]
+
 
 if __name__=='__main__':
-    s = pd.Series(np.sin(np.linspace(0, 50, 160) + 2)+ 3*np.cos(np.linspace(0, 100, 160) + 0.6*np.random.randn(160)))
-    s.index = pd.date_range(start="2010-09-01", freq="MS", periods=len(s))
+    # print(type(str(check_format("2024/10/12"))))
+    # s = pd.Series(np.sin(np.linspace(0, 50, 160) + 2)+ 3*np.cos(np.linspace(0, 100, 160) + 0.6*np.random.randn(160)))
+    # s.index = pd.date_range(start="2010-09-01", freq="MS", periods=len(s))
 
     tasa = pd.read_csv("./data/endogena/to202406.csv")
     tasa.index = pd.DatetimeIndex(tasa.pop('ds'))
 
-    ss = SlidingSpans(x13_arima_analysis, sliding_len=8, span_len=60)
-    ss.fit(tasa.loc['2020-01-01':])
+    # ss = SlidingSpans(x13_arima_analysis, sliding_len=8, span_len=60)
+    # # ss.fit(tasa.loc['2020-01-01':])
+    # # print(ss.A)
+    # print(ss.A_ratio().tail(10))
+    # print(ss.MM_ratio().tail(10))
+    # print(ss.predict())
 
-    print(ss.A)
-    print(ss.A_ratio().tail(10))
-    print(ss.MM_ratio().tail(10))
-    print(ss.predict())
+    rh = RevisionHistory(x13_arima_analysis)
+    print(rh.fit(tasa).A)
+    # print(rh.A[f'A*|[{rh.T.date()}]'])
+    print(rh.R_value("20181001"))
+    print(rh.C())
