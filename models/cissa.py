@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.linalg import hankel, dft
 from scipy.signal import lfilter
 from scipy import stats
-from spectrum import aryule
+from statsmodels.regression.linear_model import yule_walker  # Import yule_walker from statsmodels
 
 def build_groupings(period_ranges, data_per_unit_period, psd, z, include_noise=True):
     """
@@ -37,8 +37,8 @@ def build_groupings(period_ranges, data_per_unit_period, psd, z, include_noise=T
             min_k = min(min_k, myarray.min())
         else:
             myarray = np.arange(
-                max(1, np.floor(L / (value_p[1] * s) + 1)) - 1,
-                min(F - 1, np.floor(L / (value_p[0] * s) + 1)),
+                max(1, int(np.floor(L / (value_p[1] * s)) + 1)) - 1,
+                min(F - 1, int(np.floor(L / (value_p[0] * s)) + 1)),
                 dtype=int
             )
             kg[key_p] = myarray
@@ -106,30 +106,31 @@ def extend(x, H):
     else:
         p = int(np.fix(T / 3))
         dx = np.diff(x, axis=0)
-        A, _, _ = aryule(dx.flatten(), p)
+        # Using yule_walker from statsmodels
+        rho, sigma = yule_walker(dx.flatten(), order=p)
+        A = -rho  # Adjust sign to match expected AR coefficients
         y = x.copy()
         dy = np.diff(y, axis=0)
         er = lfilter(np.append(1, A), 1, dy.flatten())
         dy = lfilter([1], np.append(1, A), np.concatenate([er, np.zeros(H)]))
-        y = y[0] + np.concatenate([0], np.cumsum(dy))
+        y = y[0] + np.concatenate(([0], np.cumsum(dy)))
         y = np.flipud(y)
         dy = np.diff(y, axis=0)
         er = lfilter(np.append(1, A), 1, dy.flatten())
         dy = lfilter([1], np.append(1, A), np.concatenate([er, np.zeros(H)]))
-        y = y[0] + np.concatenate([0], np.cumsum(dy))
+        y = y[0] + np.concatenate(([0], np.cumsum(dy)))
         xe = np.flipud(y)
     return xe.reshape(-1, 1)
 
-def group(Z, psd, I, season_length=1, cycle_length=[1.5, 8], include_noise=True):
+def group(Z, psd, data_per_unit_period, period_ranges, include_noise=True):
     """
     Group reconstructed components by frequency.
 
     Parameters:
     - Z: numpy array, reconstructed components by frequency
     - psd: numpy array, power spectral density
-    - I: int or dict, grouping instructions
-    - season_length: int, length of the season in years
-    - cycle_length: list, cycle periods
+    - data_per_unit_period: int, number of data points per unit period
+    - period_ranges: dict, grouping instructions
     - include_noise: bool, whether to include noise component
 
     Returns:
@@ -140,23 +141,7 @@ def group(Z, psd, I, season_length=1, cycle_length=[1.5, 8], include_noise=True)
     T, F = Z.shape
     L = len(psd)
 
-    if isinstance(I, int) and I > 0:
-        s = I
-        kg = {}
-        kg['seasonality'] = (L * np.arange(1, np.floor(s / 2) + 1) / (season_length * s)).astype(int)
-        kg['long term cycle'] = np.arange(
-            max(1, int(np.floor(L / (cycle_length[1] * s) + 1)) - 1),
-            min(F - 1, int(np.floor(L / (cycle_length[0] * s) + 1))),
-            dtype=int
-        )
-        kg['trend'] = np.arange(0, kg['long term cycle'][0])
-
-        if include_noise:
-            current_k = np.concatenate([kg[key] for key in kg])
-            missing_k = np.setdiff1d(np.arange(0, int(np.floor(L / 2))), current_k)
-            kg['noise'] = missing_k
-    else:
-        raise ValueError("Invalid value for I. Expected a positive integer.")
+    kg = build_groupings(period_ranges, data_per_unit_period, psd, Z, include_noise)
 
     if L % 2:
         pzz = np.concatenate([psd[0:1], 2 * psd[1:F]])
@@ -198,9 +183,9 @@ def cissa(x, L, H=0):
         H = L
 
     if L % 2:
-        nf2 = (L + 1) / 2 - 1
+        nf2 = (L + 1) // 2 - 1
     else:
-        nf2 = L / 2 - 1
+        nf2 = L // 2 - 1
     nft = nf2 + abs(L % 2 - 2)
 
     xe = extend(x, H)
@@ -236,7 +221,7 @@ def cissa(x, L, H=0):
 
     R = np.zeros((T + 2 * H, L))
     for k in range(L):
-        R[:, k:k + 1] = diagaver_single_thread((U[:, k:k + 1] @ W[k:k + 1, :]))
+        R[:, k:k + 1] = diagaver_single_thread(U[:, k:k + 1] @ W[k:k + 1, :])
 
     Z = np.zeros((T + 2 * H, int(nft)))
     Z[:, 0:1] = R[:, 0:1]
@@ -266,7 +251,9 @@ def get_cissa(series, L=12, use_max_L=True):
     T = series.shape[0]
 
     if use_max_L:
-        L = (T // 2 - 1) // 12 * 12
+        L = ((T // 2 - 1) // 12) * 12
+        if L < 12:
+            L = 12  # Ensure L is at least 12
     else:
         if L % 12 != 0:
             raise ValueError("L must be a multiple of 12")
@@ -274,9 +261,13 @@ def get_cissa(series, L=12, use_max_L=True):
             raise ValueError(f"The window length must be less than T/2. Currently L = {L}, T = {T}")
 
     print(f"Computing CiSSA for L={L}")
-    Z, psd = cissa(series.values, L)
+    Z, psd = cissa(series.values.flatten(), L)
     data_per_year = 12
-    rc, sh, kg = group(Z, psd, data_per_year)
+    period_ranges = {
+        'seasonality': (1, 1),
+        'long term cycle': (1.5, 8)
+    }
+    rc, sh, kg = group(Z, psd, data_per_year, period_ranges)
 
     return rc, sh, kg
 
