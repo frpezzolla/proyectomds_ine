@@ -1,7 +1,7 @@
 import pandas as pd
 
-def cargar_datos(ruta, sep=";"):
-    return pd.read_csv(ruta, sep=sep)
+def cargar_datos(ruta, sep=";",encoding="utf-8"):
+    return pd.read_csv(ruta, sep=sep,encoding=encoding)
 
 def preprocesar_tasa_trimestral(data):
     data = data.copy()
@@ -40,3 +40,37 @@ def preprocesar_casos_confirmados(casos_confirmados):
     casos_mensuales['Fecha'] = casos_mensuales['Year_Month'].dt.to_timestamp()
     return casos_mensuales.set_index('Fecha').drop(columns='Year_Month')
 
+def preprocesar_pib(pib):
+    pib['Periodo'] = pd.to_datetime(pib['Periodo'], format='%d-%m-%Y')
+    dic = {"Periodo": "date", "1.PIB a precios corrientes": "pib_corrientes","2.PIB volumen a precios del a�o anterior encadenado":"pib_inflacion","3.PIB volumen a precios del a�o anterior encadenado (desestacionalizado)":"pib_inflacion_desestacionalizado"}
+    df = pib.copy().rename(columns=dic)
+    df = df.replace(",", ".", regex=True)
+    df = df[df['date'].dt.year>=2010]
+    columns = df.columns.tolist()
+    num = [col for col in columns if col != 'date']
+    df[num] = df[num].astype(float)
+
+    df_disj = df.copy()
+    df_disj.set_index('date', inplace=True)
+    df.set_index('date', inplace=True)
+
+    monthly_index = pd.date_range(start=df.index.min(), end=df.index.max(), freq='MS')
+    df = df.reindex(monthly_index)
+    df = df.ffill()
+
+    return df,df_disj
+
+def preprocesar_ipc(ipc1,ipc2):
+    ipc1['Periodo'] = pd.to_datetime(ipc1['Periodo'], format='%d-%m-%Y')
+    ipc2['Periodo'] = pd.to_datetime(ipc2['Periodo'], format='%d-%m-%Y')
+    data = pd.merge(ipc1, ipc2, on='Periodo', how='inner')
+    columns = data.columns.tolist()
+    dic = {"Periodo": "date",columns[1]:"IPC",columns[2]:"IPC_Sin_Volatiles"}
+    df = data.copy().rename(columns=dic)
+    df = df.replace(",", ".", regex=True)
+    df = df[df['date'].dt.year>=2010]
+    columns = df.columns.tolist()
+    num = [col for col in columns if col != 'date']
+    df[num] = df[num].astype(float)
+    df.set_index('date', inplace=True)
+    return df
