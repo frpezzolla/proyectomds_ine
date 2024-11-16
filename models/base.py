@@ -10,7 +10,7 @@ class BaseModel():
         self.model_obj = None
         self._seasadj = None
 
-    def fit(self, endog:pd.Series, exog:pd.Series):
+    def fit(self, endog:pd.Series, exog:pd.Series=None):
         self.endog = endog
         self.exog = exog
         return self
@@ -27,7 +27,7 @@ class BaseModel():
     def residue(self) -> pd.Series:
         pass
 
-    @getattr
+    @property
     def seasadj(self) -> pd.Series:
         if isinstance(self._seasadj, pd.Series):
             return self._seasadj
