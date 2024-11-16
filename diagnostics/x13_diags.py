@@ -30,7 +30,7 @@ def check_format(date):
 x13as_path = path.abspath("C:/Program Files/x13as")
 class SlidingSpans():
     # Considero mejor definir el modelo en el init, es decir, por objecto, a diferencia de outlier.OutlierAnalysis
-    def __init__(self, model, sliding_len=6, span_len=48) -> None:
+    def __init__(self, model, sliding_len=12, span_len=48) -> None:
         self.model = model
         self.sliding_len = sliding_len
         self.span_len = span_len
@@ -38,11 +38,19 @@ class SlidingSpans():
         self._A_ratio, self._MM_ratio = None, None
         self.A_metric, self.MM_metric = None, None
 
-    def fit(self, serie:pd.Series):
+    def fit(self, serie:pd.Series, inverse=False):
         origin = serie.copy()
         A = pd.DataFrame(index=origin.index)
-        for n, j_index in enumerate(range(0, len(origin.index)-self.span_len, self.sliding_len)):
-            j_set = origin.iloc[j_index:j_index+self.span_len].copy()
+        if not inverse:
+            slide_iter = range(0, len(origin.index)-self.span_len, self.sliding_len)
+            j_sets = iter(origin.iloc[j_index:j_index+self.span_len].copy() for j_index in slide_iter)
+        else:
+            slide_iter = range(len(origin.index), self.span_len, -self.sliding_len)
+            j_sets = iter(origin.iloc[j_index-self.span_len:j_index].copy() for j_index in slide_iter)
+
+        # for n, j_index in enumerate(range(0, len(origin.index)-self.span_len, self.sliding_len)):
+            # j_set = origin.iloc[j_index:j_index+self.span_len].copy()
+        for n, j_set in enumerate(j_sets):   
             try:
                 if self.model.__name__== 'x13_arima_analysis':
                     x13j = self.model(
@@ -149,7 +157,7 @@ class RevisionHistory():
         return self._C_n(n_final) - self._C_n(n_init)
 
     def R_value(self, t):
-        return self.An_change(self.T, t).iloc[-1]
+        return self.A_change(self.T, t).iloc[-1]
 
 
 if __name__=='__main__':
@@ -160,15 +168,15 @@ if __name__=='__main__':
     tasa = pd.read_csv("./data/endogena/to202406.csv")
     tasa.index = pd.DatetimeIndex(tasa.pop('ds'))
 
-    # ss = SlidingSpans(x13_arima_analysis, sliding_len=8, span_len=60)
-    # # ss.fit(tasa.loc['2020-01-01':])
-    # # print(ss.A)
-    # print(ss.A_ratio().tail(10))
-    # print(ss.MM_ratio().tail(10))
-    # print(ss.predict())
+    ss = SlidingSpans(x13_arima_analysis, sliding_len=8, span_len=60)
+    ss.fit(tasa, inverse=True)
+    # print(ss.A)
+    print(ss.A_ratio())
+    print(ss.MM_ratio()) 
+    print(ss.predict())
 
-    rh = RevisionHistory(x13_arima_analysis)
-    print(rh.fit(tasa).A)
-    # print(rh.A[f'A*|[{rh.T.date()}]'])
-    print(rh.R_value("20181001"))
-    print(rh.C())
+    # rh = RevisionHistory(x13_arima_analysis)
+    # print(rh.fit(tasa).A)
+    # # print(rh.A[f'A*|[{rh.T.date()}]'])
+    # print(rh.R_value("20181001"))
+    # print(rh.C)
