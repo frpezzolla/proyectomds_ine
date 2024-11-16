@@ -1,11 +1,14 @@
 from os import path
 import pandas as pd
+import numpy as np
 from statsmodels.tsa.x13 import x13_arima_analysis
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from plotly import graph_objects as go
 import warnings
 from statsmodels.tools.sm_exceptions import X13Warning, ConvergenceWarning, ValueWarning, ModelWarning
 from sklearn.metrics import mean_squared_error
+from x13_diags import SlidingSpans, RevisionHistory
+
 
 warnings.simplefilter('ignore', category=X13Warning)
 warnings.simplefilter('ignore', category=ConvergenceWarning)
@@ -134,3 +137,122 @@ class OutlierAnalysis():
     def plot_evol(self):
         fig = go.Figure(go.Scatter(x=self.serie[self.end:].index, y=self.mses))
         fig.show()
+
+
+class SlidingOutliers(SlidingSpans):
+    def __init__(self,model, **kwargs) -> None:
+        super().__init__(model, **kwargs)
+
+    def MM_analysis(self, serie:pd.Series, outlier:pd.Series):
+        start = outlier.index[0]
+        self.fit(serie[:start], inverse=True)
+        preMM = self.MM_ratio().loc[:start, 'metric'].copy()
+        self.fit(serie, inverse=True)
+        posMM = self.MM_ratio().loc[:start, 'metric'].copy()
+        MM = pd.concat([preMM, posMM], axis=1).dropna(how='any', axis=0)
+        return mean_squared_error(MM.iloc[:,1], MM.iloc[:,0])
+
+    def A_analysis(self, serie:pd.Series, outlier:pd.Series):
+        start = outlier.index[0]
+        self.fit(serie[:start], inverse=True)
+        preA = self.A_ratio().loc[:start, 'metric'].copy()
+        self.fit(serie, inverse=True)
+        posA = self.A_ratio().loc[:start, 'metric'].copy()
+        A = pd.concat([preA, posA], axis=1).dropna(how='any', axis=0)
+        return mean_squared_error(A.iloc[:,1], A.iloc[:,0])
+
+        
+        
+class RevisionOutlier(RevisionHistory):
+    def __init__(self, model, **kwargs) -> None:
+        super().__init__(model, **kwargs)
+    
+    def A_analysis(self, outlier:pd.Series, n_seasons=4):
+        if isinstance(self.A, pd.DataFrame):
+            a = self.A.copy()
+            start, end = outlier.index[0], outlier.index[-1]
+            seasons = [start + pd.DateOffset(months=int(12*s)) for s in range(n_seasons)]
+            seasons = sorted([*seasons, end])
+            achange_base = a.loc[:start, f'A*|[{start.date().isoformat()}]'].copy()
+            residue = dict()
+            for season in seasons:
+                col_target = f'A*|[{season.date().isoformat()}]'
+                if col_target in a.columns:
+                    achange_target = a.loc[:start, col_target]
+                    residue[season] = mean_squared_error(
+                        achange_target / achange_base, 
+                        np.ones_like(achange_base.to_numpy())
+                        )
+                else:
+                    warnings.warn("Se definen más estaciones de las encontradas en la serie") 
+                    break                   
+            return pd.Series(residue)
+        else:
+            raise Exception("Es necesario aplicar método fit a serie")
+        
+    def C_analysis(self, outlier:pd.Series, n_seasons=4):
+        if isinstance(self.C, pd.DataFrame):
+            c = self.C.copy()
+            start, end = outlier.index[0], outlier.index[-1]
+            seasons = [start + pd.DateOffset(months=int(12*s)) for s in range(n_seasons)]
+            seasons = sorted([*seasons, end])
+            c_base = c.loc[:start, f'C*|[{start.date().isoformat()}]'].copy()
+            residue = dict()
+            for season in seasons:
+                col_target = f'C*|[{season.date().isoformat()}]'
+                if col_target in c.columns:
+                    c_target = c.loc[:start, col_target]
+                    residue[season] = mean_squared_error(c_target, c_base)
+                else:
+                    warnings.warn("Se definen más estaciones de las encontradas en la serie")      
+                    break
+            return pd.Series(residue)
+        else:
+            raise Exception("Es necesario aplicar método fit a serie")
+    
+
+if __name__=='__main__':
+    from plotly import express as px
+    # print(type(str(check_format("2024/10/12"))))
+    # s = pd.Series(np.sin(np.linspace(0, 50, 160) + 2)+ 3*np.cos(np.linspace(0, 100, 160) + 0.6*np.random.randn(160)))
+    # s.index = pd.date_range(start="2010-09-01", freq="MS", periods=len(s))
+
+    tasa = pd.read_csv("./data/endogena/to202406.csv")
+    tasa.index = pd.DatetimeIndex(tasa.pop('ds'))
+
+    # # ss = SlidingSpans(x13_arima_analysis, sliding_len=8, span_len=60)
+    # # # ss.fit(tasa.loc['2020-01-01':])
+    # # # print(ss.A)
+    # # print(ss.A_ratio().tail(10))
+    # # print(ss.MM_ratio().tail(10))
+    # # print(ss.predict())
+
+    # rh = RevisionHistory(x13_arima_analysis)
+    # print(rh.fit(tasa).A)
+    # # print(rh.A[f'A*|[{rh.T.date()}]'])
+    # print(rh.R_value("20181001"))
+    # print(rh.C)
+
+    ro = RevisionOutlier(x13_arima_analysis)
+    outlier = pd.Series(pd.date_range(start='2020-01-01', end='2022-05-01', freq='MS'))
+    outlier.index = pd.DatetimeIndex(outlier)
+    outlier.loc[:] = 1
+    ro.fit(tasa)
+    change = ro.A_analysis(outlier=outlier, n_seasons=9)
+    fig = px.line(change)
+    fig.show()
+    
+    change = ro.C_analysis(outlier=outlier, n_seasons=9)
+    fig = px.line(change)
+    fig.show()
+
+    sli = SlidingOutliers(x13_arima_analysis)
+    print(sli.A_analysis(serie=tasa, outlier=outlier))
+    print(sli.MM_analysis(serie=tasa, outlier=outlier))
+
+
+
+
+
+
+
