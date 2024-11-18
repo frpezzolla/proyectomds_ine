@@ -1,5 +1,5 @@
 # Importamos clase plantilla
-from base import BaseModel
+from models.base import BaseModel
 
 # Paquetes
 from statsmodels.tsa.seasonal import STL
@@ -64,33 +64,34 @@ class STLModel(BaseModel):
 # --------------------------------------------------------------------------------------------------
 # Ejemplo de uso
 # --------------------------------------------------------------------------------------------------
+if __name__=='__main___':
+    pass
+    # Diccionario de hiperparámetros
+    #hiperparams = {'seasonal': 13, 'robust': True}
 
-# Diccionario de hiperparámetros
-#hiperparams = {'seasonal': 13, 'robust': True}
+    # Instanciamos
+    #stl_model = STLModel(hiperparams)
 
-# Instanciamos
-#stl_model = STLModel(hiperparams)
+    # Leemos la base y la formateamos
 
-# Leemos la base y la formateamos
-
-#data = pd.read_csv("./Datos/processed/desocupacion.csv")
-#data.rename(columns={'Unnamed: 0': 'date'}, inplace=True)
-#data.index = pd.to_datetime(data["date"])
-#data=data.drop(["date"],axis=1)
+    #data = pd.read_csv("./Datos/processed/desocupacion.csv")
+    #data.rename(columns={'Unnamed: 0': 'date'}, inplace=True)
+    #data.index = pd.to_datetime(data["date"])
+    #data=data.drop(["date"],axis=1)
 
 
-# Entrenar el modelo
-#stl_model.fit(endog=data['Tasa oficial'])
+    # Entrenar el modelo
+    #stl_model.fit(endog=data['Tasa oficial'])
 
-# Ajustar y obtener la serie desestacionalizada
-#serie_desestacionalizada = stl_model.adjust()
+    # Ajustar y obtener la serie desestacionalizada
+    #serie_desestacionalizada = stl_model.adjust()
 
-# Obtener componentes específicas
-#tendencia = stl_model.trend_cycle()
-#estacionalidad = stl_model.seasonality()
-#residuo = stl_model.residue()
+    # Obtener componentes específicas
+    #tendencia = stl_model.trend_cycle()
+    #estacionalidad = stl_model.seasonality()
+    #residuo = stl_model.residue()
 
-#print(pd.DataFrame({"STL desestacionalizada":serie_desestacionalizada,"Ajustada INE":data["Tasa ajustada"]}))
+    #print(pd.DataFrame({"STL desestacionalizada":serie_desestacionalizada,"Ajustada INE":data["Tasa ajustada"]}))
 
 
 

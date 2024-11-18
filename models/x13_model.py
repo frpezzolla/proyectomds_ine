@@ -1,6 +1,6 @@
 from statsmodels.tsa.x13 import x13_arima_analysis
 from os import path
-from base import BaseModel
+from models.base import BaseModel
 import traceback
 
 x13as_path = path.abspath("C:/Program Files/x13as")
@@ -13,7 +13,6 @@ class X13Wrap(BaseModel):
                 maxorder=self.hiperparams.get('maxorder'),
                 x12path=x13as_path,
                 outlier=self.hiperparams.get('outlier'),
-                
             )
         except Exception as e:
             print(type(e).__name__, traceback.format_exc(), sep=': ')

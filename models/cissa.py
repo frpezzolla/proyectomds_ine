@@ -5,6 +5,7 @@ from scipy.linalg import hankel, dft
 from scipy.signal import lfilter
 from scipy import stats
 from statsmodels.regression.linear_model import yule_walker  # Import yule_walker from statsmodels
+from models.base import BaseModel
 
 def build_groupings(period_ranges, data_per_unit_period, psd, z, include_noise=True):
     """
