@@ -7,7 +7,9 @@ from plotly import graph_objects as go
 import warnings
 from statsmodels.tools.sm_exceptions import X13Warning, ConvergenceWarning, ValueWarning, ModelWarning
 from sklearn.metrics import mean_squared_error
-from x13_diags import SlidingSpans, RevisionHistory
+
+from diagnostics.x13_diags import SlidingSpans, RevisionHistory
+from models.base import BaseModel
 
 
 warnings.simplefilter('ignore', category=X13Warning)
@@ -65,7 +67,7 @@ class OutlierAnalysis():
         self.comp_serie = comp_serie if serie is None else self.comp_serie
         return comp_serie
     
-    def seasonality_diff(self, seasonal_model=x13_arima_analysis, serie=None,  forecast_model=None, mse_limit=None):
+    def seasonality_diff(self, seasonal_model:BaseModel, serie=None,  forecast_model=None, mse_limit=None):
         serie = self.serie if serie is None else serie
         forecast_model = self.forecast_model if forecast_model is None else forecast_model
 
@@ -74,17 +76,21 @@ class OutlierAnalysis():
         # Modelo X13-SARIMA
         # Desestacionalización Serie compuesta por parte OFICIAL-PRONOSTICO-OFICIAL (Prepandemia-Pandemia-Pospandemia)
         if seasonal_model.__name__== 'x13_arima_analysis':
-            x13comp = seasonal_model(
-                endog=comp_serie,
-                maxorder=(1,1),
-                x12path=x13as_path,
-                outlier=False)
+            seasonal_model.fit(comp_serie)
+            x13comp = seasonal_model.adjust()
+            # x13comp = seasonal_model(
+            #     endog=comp_serie,
+            #     maxorder=(1,1),
+            #     x12path=x13as_path,
+            #     outlier=False)
             # Predicción Serie Oficial
-            x13real = seasonal_model(
-                endog=serie,
-                maxorder=(1,1),
-                x12path=x13as_path,
-                outlier=False)
+            seasonal_model.fit(serie)
+            x13real = seasonal_model.adjust()
+            # x13real = seasonal_model(
+            #     endog=serie,
+            #     maxorder=(1,1),
+            #     x12path=x13as_path,
+            #     outlier=False)
         
             comp_adj = x13comp.seasadj
             real_adj = x13real.seasadj

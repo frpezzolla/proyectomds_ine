@@ -8,11 +8,11 @@ import pandas as pd
 # Definimos la subclase
 class STLModel(BaseModel):
     # Inicializador
-    def __init__(self, hiperparams: dict, outlier: pd.Series = None) -> None:
-        # Herencia de características
-        super().__init__(hiperparams, outlier)
-        # Guardar el resultado
-        self._stl_result = None
+    # def __init__(self, hiperparams: dict, outlier: pd.Series = None) -> None:
+    #     # Herencia de características
+    #     super().__init__(hiperparams, outlier)
+    #     # Guardar el resultado
+    #     self.model_obj = None
 
     def adjust(self) -> pd.Series:
         """
@@ -25,10 +25,10 @@ class STLModel(BaseModel):
         # Configurar STL con hiperparámetros
         stl = STL(self.endog, **self.hiperparams)
         # Ajustamos y guardamos en la variable correspondiente
-        self._stl_result = stl.fit()
+        self.model_obj = stl.fit()
 
         # Calcular la serie ajustada (tendencia + residuo)
-        self._seasadj = self._stl_result.trend + self._stl_result.resid
+        self._seasadj = self.model_obj.trend + self.model_obj.resid
         return self._seasadj
 
     def trend_cycle(self) -> pd.Series:
@@ -36,30 +36,30 @@ class STLModel(BaseModel):
         Devuelve la componente de tendencia-ciclo de la serie ajustada.
         """
         # Nos aseguramos de haber llamado a adjust
-        if self._stl_result is None:
+        if self.model_obj is None:
             raise ValueError("Debe llamar al método adjust antes de obtener la tendencia.")
         # Retornamos
-        return self._stl_result.trend
+        return self.model_obj.trend
 
     def seasonality(self) -> pd.Series:
         """
         Devuelve la componente estacional de la serie ajustada.
         """
         # Nos aseguramos de haber llamado a adjust
-        if self._stl_result is None:
+        if self.model_obj is None:
             raise ValueError("Debe llamar al método adjust antes de obtener la estacionalidad.")
         # Retornamos
-        return self._stl_result.seasonal
+        return self.model_obj.seasonal
 
     def residue(self) -> pd.Series:
         """
         Devuelve la componente de residuo de la serie ajustada.
         """
         # Nos aseguramos de haber llamado a adjust
-        if self._stl_result is None:
+        if self.model_obj is None:
             raise ValueError("Debe llamar al método adjust antes de obtener el residuo.")
         # Retornamos
-        return self._stl_result.resid
+        return self.model_obj.resid
 
 # --------------------------------------------------------------------------------------------------
 # Ejemplo de uso

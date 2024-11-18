@@ -7,7 +7,8 @@ from plotly import graph_objects as go
 import warnings
 from statsmodels.tools.sm_exceptions import X13Warning, ConvergenceWarning, ValueWarning, X13Error
 from sklearn.metrics import mean_squared_error
-# from models import x13_model, cissa, stl
+
+from models.base import BaseModel
 
 # from ..tools.exceptions import FormatoFechaError
 warnings.simplefilter('ignore', category=X13Warning)
@@ -32,7 +33,7 @@ def check_format(date):
 x13as_path = path.abspath("C:/Program Files/x13as")
 class SlidingSpans():
     # Considero mejor definir el modelo en el init, es decir, por objecto, a diferencia de outlier.OutlierAnalysis
-    def __init__(self, model, sliding_len=12, span_len=48) -> None:
+    def __init__(self, model:BaseModel, sliding_len=12, span_len=48) -> None:
         self.model = model
         self.sliding_len = sliding_len
         self.span_len = span_len
@@ -113,7 +114,7 @@ class SlidingSpans():
         return {'A%:':self.A_metric, 'MM%': self.MM_metric}
 
 class RevisionHistory():
-    def __init__(self, model) -> None:
+    def __init__(self, model:BaseModel) -> None:
         self.model = model
         self.A = None
         self.C = None

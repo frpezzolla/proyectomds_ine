@@ -9,8 +9,11 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from models.cissa import get_cissa
-# TODO: Implement X13
-# TODO: Implement STL
+from models.x13_model import X13Wrap
+from models.stl import STLModel
+
+from diagnostics import outlier
+
 from utils.setup_logging import setup as setup_logging
 
 def apply_x13(series):

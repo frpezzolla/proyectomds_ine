@@ -18,7 +18,7 @@ class X13Wrap(BaseModel):
             print(type(e).__name__, traceback.format_exc(), sep=': ')
             raise ValueError("Faltan hiperparámetros requeridos por el modelo")
         self._seasadj = self.model_obj.seasadj.rename('seasadj')
-        return self
+        return self._seasadj
     
     @property
     def __name__(self):
