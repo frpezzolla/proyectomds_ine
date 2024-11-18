@@ -21,10 +21,21 @@ def apply_x13(series):
     # TODO: Implement X13 decomposition and return the trend component
     return
 
-def apply_stl(series, period=12):
-    """Apply STL decomposition to the provided series."""
-    # TODO: Implement STL decomposition and return the trend component
-    return
+def apply_stl(series, verbose=False):
+    """Apply STL decomposition to the provided series.
+    series: 1D series, datetime index"""
+    # DONE: Implement STL decomposition and return the trend component
+    if verbose:
+        logging.info("Applying STL decomposition...")
+    try:
+        stl_model = STLModel()
+        stl_model.fit(series)
+        series_adj = stl_model.adjust()
+        deseasonalised_series = pd.Series(series_adj, index=series.index)
+        return deseasonalised_series
+    except Exception as e:
+        logging.error(f"CiSSA decomposition failed: {e}")
+        return None
 
 def apply_cissa(series, verbose=False):
     """Apply CiSSA decomposition to the provided series."""
