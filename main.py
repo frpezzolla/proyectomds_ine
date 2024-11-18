@@ -25,7 +25,7 @@ def apply_stl(series, period=12):
     """Apply STL decomposition to the provided series."""
     # TODO: Implement STL decomposition and return the trend component
     return
-    
+
 def apply_cissa(series, verbose=False):
     """Apply CiSSA decomposition to the provided series."""
     if verbose:
@@ -124,16 +124,14 @@ def main(args):
     if args.x13:
         logging.info("Applying X13-ARIMA-SEATS decomposition...")
         try:
-            for age_group in [15,25]:
-                pass
+            pass
         except Exception as e:
             logging.error(f"X13 decomposition failed: {e}")
 
     if args.stl:
         logging.info("Applying STL decomposition...")
         try:
-            for age_group in [15,25]:
-                pass
+            pass
         except Exception as e:
             logging.error(f"STL decomposition failed: {e}")
 
@@ -201,6 +199,7 @@ if __name__ == "__main__":
     parser.add_argument('--logfile', type=str, default='', help='Log file name (if empty, logs to console)')
 
     # Read arguments from 'arguments.txt' if it exists
+    # TODO: Make it optional to check for arguments
     args_list = []
     if os.path.isfile('arguments.txt'):
         try:
