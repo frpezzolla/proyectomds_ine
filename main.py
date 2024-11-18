@@ -1,19 +1,16 @@
-# main.py
-
 import argparse
 import logging
 import os
 import sys
+import shlex
 
 import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 
-import shlex
-
-from models.cissa import get_cissa  # Assuming cissa.py is in src/ directory
-# from src.x13 import apply_x13  # TODO: Implement X13 method in x13.py
-# from src.stl import apply_stl  # TODO: Implement STL method in stl.py
+from models.cissa import get_cissa
+# TODO: Implement X13
+# TODO: Implement STL
 from utils.setup_logging import setup as setup_logging
 
 def apply_x13(series):
@@ -32,32 +29,22 @@ def apply_cissa(series, verbose=False):
         logging.info("Applying CiSSA decomposition...")
     try:
         reconstructed_series, singular_values, groups = get_cissa(series)
-        return reconstructed_series  # Expected to be a pd.Series
+        # do something with the seasonal trend decomposition
+        deseasonalised_series = pd.Series(reconstructed_series['long term cycle'].flatten(), index=series.index)
+        return deseasonalised_series
     except Exception as e:
         logging.error(f"CiSSA decomposition failed: {e}")
         return None
     
 def run_diagnostics():
-    return
+    pass
 
 def import_data(file_dir):
-    # Expected data structure:
-    # year, month, series_1, series_2, series_3, series_4, ..., series_8
     try:
         data = pd.read_csv(file_dir)
-        
-        # =====================================================================
-        # DEAL WITH DATE
-        # Combine 'year' and 'month' columns to create 'date' column
         data['date'] = pd.to_datetime(data['ano'].astype(str) + '-' + data['mes'].astype(str) + '-01')
-        # Set 'date' as the index
         data.set_index('date', inplace=True)
-        # Optionally, drop the 'year' and 'month' columns if no longer needed
         data.drop(['ano', 'mes'], axis=1, inplace=True)
-        
-        # =====================================================================
-        # DEAL WITH INDIVIDUAL TIME SERIES
-
         logging.info("Data imported successfully.")
     except (FileNotFoundError, pd.errors.ParserError, ValueError) as e:
         logging.error(f"Error reading input file: {e}")
@@ -65,14 +52,6 @@ def import_data(file_dir):
     except Exception as e:
         logging.error(f"An unexpected error occurred while reading the input file: {e}")
         sys.exit(1)
-
-    # # Check for required columns
-    # required_columns = ['employment', 'unemployment']
-    # for col in required_columns:
-    #     if col not in data.columns:
-    #         logging.error(f"Input data must contain '{col}' column.")
-    #         sys.exit(1)
-
     return data
 
 
@@ -95,19 +74,14 @@ def plot_series(original_series, trend_series, method_name, output_dir, usetex=F
     plt.close()
     logging.info(f"Plot saved to {plot_filename}")
 
-def main(args):    
-    global results
-    # Set up logging
-    # setup_logging(args.loglevel, args.logfile)
+def main(args):
 
     logging.info("Starting the STD process...")
-
-    # Check if input file exists
+    
     if not os.path.isfile(args.input):
         logging.error(f"Input file '{args.input}' does not exist.")
         sys.exit(1)
-
-    # Create output directories if they don't exist
+        
     os.makedirs(args.output_dir, exist_ok=True)
     os.makedirs(args.plot_dir, exist_ok=True)
     os.makedirs(args.log_dir, exist_ok=True)
@@ -139,8 +113,8 @@ def main(args):
         logging.info("Applying CiSSA decomposition...")
         for sex in ['h', 'm']:
             for age_group in ['15', '25']:
-                deseasonalised_series[f'd{sex}{age_group}'] = pd.Series(apply_cissa(data[f'd{sex}{age_group}'])['long term cycle'].flatten(), index=data.index)
-                deseasonalised_series[f'o{sex}{age_group}'] = pd.Series(apply_cissa(data[f'o{sex}{age_group}'])['long term cycle'].flatten(), index=data.index)
+                deseasonalised_series[f'd{sex}{age_group}'] = apply_cissa(data[f'd{sex}{age_group}'])
+                deseasonalised_series[f'o{sex}{age_group}'] = apply_cissa(data[f'o{sex}{age_group}'])
         
     # =========================================================================
     # Run diagnostics
@@ -149,23 +123,16 @@ def main(args):
     # =========================================================================
     # Calculate unemployment rates
     results = data.copy()[['dh15', 'dm15', 'dh25', 'dm25', 'oh15', 'om15', 'oh25', 'om25']]
-    
     for sex in ['h', 'm']:
         for age_group in ['15', '25']:
+            
             unoccupied_original = data[f'd{sex}{age_group}']
             occupied_original = data[f'o{sex}{age_group}']
-            
             results[f'{sex}{age_group}'] = unoccupied_original / (occupied_original + unoccupied_original)
             
             unoccupied_deseasonalised = deseasonalised_series[f'd{sex}{age_group}']
-            # print(unoccupied)
             occupied_deseasonalised = deseasonalised_series[f'o{sex}{age_group}']
-            # print(occupied)
             results[f'{sex}{age_group}_deseasonalised'] = unoccupied_deseasonalised / (occupied_deseasonalised + unoccupied_deseasonalised)
-            
-            # =================================================================
-            # OPTIONAL PLOTTING
-            
     
     # =========================================================================
     # Save results
@@ -178,7 +145,7 @@ def main(args):
         sys.exit(1)
 
 if __name__ == "__main__":
-    # Set up basic logging temporarily in case of early errors
+    
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     parser = argparse.ArgumentParser(
@@ -199,7 +166,6 @@ if __name__ == "__main__":
     parser.add_argument('--logfile', type=str, default='', help='Log file name (if empty, logs to console)')
 
     # Read arguments from 'arguments.txt' if it exists
-    # TODO: Make it optional to check for arguments
     args_list = []
     if os.path.isfile('arguments.txt'):
         try:
