@@ -34,7 +34,7 @@ La herramienta permite desestacionalizar las series de empleo y desempleo, calcu
 
 ### Requisitos Previos
 - Windows
-- **Python 3.8 o superior**
+- **Python 3.8 a 3.12**
 - Instalador de paquetes **pip**
 - **Git** (opcional, para clonar el repositorio)
 
@@ -47,7 +47,7 @@ Los paquetes de Python requeridos se enumeran en el archivo `requirements.txt` e
 - `matplotlib`
 - `statsmodels`
 - `scipy`
-- `pycissa` (desde el repositorio `pyCiSSA`)
+- ...
 
 ### Pasos de Instalación
 
