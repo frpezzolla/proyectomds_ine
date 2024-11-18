@@ -140,7 +140,7 @@ class OutlierAnalysis():
 
 
 class SlidingOutliers(SlidingSpans):
-    def MM_analysis(self, serie:pd.Series, outlier:pd.Series):
+    def MM_mse(self, serie:pd.Series, outlier:pd.Series):
         start = outlier.index[0]
         self.fit(serie[:start], inverse=True)
         preMM = self.MM_ratio().loc[:start, 'metric'].copy()
@@ -149,7 +149,7 @@ class SlidingOutliers(SlidingSpans):
         MM = pd.concat([preMM, posMM], axis=1).dropna(how='any', axis=0)
         return mean_squared_error(MM.iloc[:,1], MM.iloc[:,0])
 
-    def A_analysis(self, serie:pd.Series, outlier:pd.Series):
+    def A_mse(self, serie:pd.Series, outlier:pd.Series):
         start = outlier.index[0]
         self.fit(serie[:start], inverse=True)
         preA = self.A_ratio().loc[:start, 'metric'].copy()
@@ -157,6 +157,26 @@ class SlidingOutliers(SlidingSpans):
         posA = self.A_ratio().loc[:start, 'metric'].copy()
         A = pd.concat([preA, posA], axis=1).dropna(how='any', axis=0)
         return mean_squared_error(A.iloc[:,1], A.iloc[:,0])
+    
+    def MM_analysis(self, serie:pd.Series, outlier:pd.Series):
+        start = outlier.index[0]
+        self.fit(serie[:start], inverse=True)
+        preMM = self.MM_ratio().loc[:start, 'metric'].copy()
+        preMM_percentage = self.predict()['MM%']
+        self.fit(serie, inverse=True)
+        posMM = self.MM_ratio().loc[:start, 'metric'].copy()
+        posMM_percentage = self.predict()['MM%']
+        return {'preMM': preMM, 'preMM_percentage': preMM_percentage, 'posMM': posMM, 'posMM':posMM_percentage}
+
+    def A_analysis(self, serie:pd.Series, outlier:pd.Series):
+        start = outlier.index[0]
+        self.fit(serie[:start], inverse=True)
+        preA = self.A_ratio().loc[:start, 'metric'].copy()
+        preA_percentage = self.predict()['A%']
+        self.fit(serie, inverse=True)
+        posA = self.A_ratio().loc[:start, 'metric'].copy()
+        posA_percentage = self.predict()['A%']
+        return {'preA': preA, 'preA_percentage': preA_percentage, 'posA': posA, 'posA':posA_percentage}
 
         
 class RevisionOutlier(RevisionHistory):

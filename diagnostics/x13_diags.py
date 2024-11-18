@@ -7,6 +7,8 @@ from plotly import graph_objects as go
 import warnings
 from statsmodels.tools.sm_exceptions import X13Warning, ConvergenceWarning, ValueWarning, X13Error
 from sklearn.metrics import mean_squared_error
+# from models import x13_model, cissa, stl
+
 # from ..tools.exceptions import FormatoFechaError
 warnings.simplefilter('ignore', category=X13Warning)
 warnings.simplefilter('ignore', category=ConvergenceWarning)
@@ -52,12 +54,14 @@ class SlidingSpans():
             # j_set = origin.iloc[j_index:j_index+self.span_len].copy()
         for n, j_set in enumerate(j_sets):   
             try:
-                if self.model.__name__== 'x13_arima_analysis':
-                    x13j = self.model(
-                        endog=j_set,
-                        maxorder=(1,1),
-                        x12path=x13as_path,
-                        outlier=False)
+                # if self.model.__name__== 'x13_arima_analysis':
+                self.model.fit(endog=j_set)
+                x13j = self.model.adjust()
+                    # x13j = self.model(
+                    #     endog=j_set,
+                    #     maxorder=(1,1),
+                    #     x12path=x13as_path,
+                    #     outlier=False)
                 Aj = x13j.seasadj.rename(f'A^{n+1}')
                 A = pd.concat([A, Aj], axis=1)
             except X13Error as e:
@@ -106,7 +110,7 @@ class SlidingSpans():
     def predict(self):
         self.A_metric = self._A_ratio['success'].sum()/len(self._A_ratio['success'])
         self.MM_metric = self._MM_ratio['success'].sum()/len(self._MM_ratio['success'])
-        return self.A_metric, self.MM_metric
+        return {'A%:':self.A_metric, 'MM%': self.MM_metric}
 
 class RevisionHistory():
     def __init__(self, model) -> None:
@@ -121,12 +125,14 @@ class RevisionHistory():
         for date_n in serie.index[3:]:
             subserie_n = origin[:date_n]
             try:
-                if self.model.__name__== 'x13_arima_analysis':
-                    x13j = self.model(
-                        endog=subserie_n,
-                        maxorder=(1,1),
-                        x12path=x13as_path,
-                        outlier=False)
+                # if self.model.__name__== 'x13_arima_analysis':
+                self.model.fit(endog=subserie_n)
+                x13j = self.model.adjust()
+                    # x13j = self.model(
+                    #     endog=subserie_n,
+                    #     maxorder=(1,1),
+                    #     x12path=x13as_path,
+                    #     outlier=False)
                 An = x13j.seasadj.rename(f'A*|[{date_n.date()}]')
                 A = pd.concat([A, An], axis=1)
             except X13Error as e:
@@ -172,7 +178,15 @@ if __name__=='__main__':
     ss.fit(tasa, inverse=True)
     # print(ss.A)
     print(ss.A_ratio())
-    print(ss.MM_ratio()) 
+    print(ss.MM_ratio())
+     
+    print(ss.predict())
+
+    ss.fit(tasa[:'2020-01-01'], inverse=True)
+    # print(ss.A)
+    print(ss.A_ratio())
+    print(ss.MM_ratio())
+     
     print(ss.predict())
 
     # rh = RevisionHistory(x13_arima_analysis)
