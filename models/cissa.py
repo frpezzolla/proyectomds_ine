@@ -7,6 +7,42 @@ from scipy import stats
 from statsmodels.regression.linear_model import yule_walker  # Import yule_walker from statsmodels
 from models.base import BaseModel
 
+class CiSSAModel(BaseModel):
+    def __init__(self, hiperparams = {'use_max_L': True, 'L': None}, outlier: pd.Series = None) -> None:
+        super().__init__(hiperparams)        
+
+    def adjust(self) -> pd.Series:
+        if self.endog is None:
+            raise ValueError("Debe llamar al método fit con una serie antes de ajustar.")
+
+        rc, _, _ = get_cissa(self.endog)
+        self.model_obj = rc
+    
+        self.trend = self.__badarray_to_series(rc['long term cycle'])
+        self.seasonal = self.__badarray_to_series(rc['seasonality'])
+        self.resid = self.__badarray_to_series(rc['noise'])
+        self._seasadj = self.trend + self.resid
+        return self
+
+    def trend_cycle(self) -> pd.Series:
+        if self.model_obj is None:
+            raise ValueError("Debe llamar al método adjust antes de obtener la tendencia.")
+        return self.model_obj.trend
+
+    def seasonality(self) -> pd.Series:
+        if self.model_obj is None:
+            raise ValueError("Debe llamar al método adjust antes de obtener la estacionalidad.")
+        return self.model_obj.seasonal
+
+    def residue(self) -> pd.Series:
+        if self.model_obj is None:
+            raise ValueError("Debe llamar al método adjust antes de obtener el residuo.")
+        return self.model_obj.resid
+    
+    def __badarray_to_series(self, bad_array): 
+        return pd.Series(bad_array.flatten(), index=self.endog.index)
+
+
 def build_groupings(period_ranges, data_per_unit_period, psd, z, include_noise=True):
     """
     Build groupings of frequencies for CiSSA components.
@@ -261,7 +297,6 @@ def get_cissa(series, L=12, use_max_L=True):
         if L >= T:
             raise ValueError(f"The window length must be less than T/2. Currently L = {L}, T = {T}")
 
-    print(f"Computing CiSSA for L={L}")
     Z, psd = cissa(series.values.flatten(), L)
     data_per_year = 12
     period_ranges = {
@@ -272,50 +307,9 @@ def get_cissa(series, L=12, use_max_L=True):
 
     return rc, sh, kg
 
-def plot_cissa(series, L=12):
-    """
-    Visualize the components of CiSSA decomposition for a given time series.
-
-    Parameters:
-    - series: pandas Series, input time series
-    - L: int, window length (multiple of 12)
-
-    Returns:
-    - None
-    """
-    rc, _, _ = get_cissa(series, L=L)
-
-    fig, axs = plt.subplots(5, 1, figsize=(10, 12), sharex=True)
-
-    axs[0].plot(series.index, rc['trend'], 'b', lw=1.0, label='Trend')
-    axs[0].set_ylabel('Trend')
-    axs[0].set_title(f'CiSSA Decomposition (L = {L // 12} years)')
-    axs[0].legend()
-
-    axs[1].plot(series.index, rc['seasonality'], 'g', lw=1.0, label='Seasonality')
-    axs[1].set_ylabel('Seasonality')
-    axs[1].legend()
-
-    axs[2].plot(series.index, rc['long term cycle'], 'r', lw=1.0, label='Long Term Cycle')
-    axs[2].set_ylabel('Long Term Cycle')
-    axs[2].legend()
-
-    axs[3].plot(series.index, rc['noise'], 'k', lw=1.0, label='Noise')
-    axs[3].set_ylabel('Noise')
-    axs[3].set_xlabel('Date')
-    axs[3].legend()
-
-    axs[4].plot(series.index, series, label='Original Series')
-    axs[4].set_ylabel('Value')
-    axs[4].legend()
-
-    plt.tight_layout()
-    plt.show()
-
 # Example usage (this would be in main.py or another script)
 if __name__ == "__main__":
     # Load your data here
     data = pd.read_excel(io="your_data.xlsx")
     # Preprocess data as required
     series = data['your_series_column']
-    plot_cissa(series, L=12)
