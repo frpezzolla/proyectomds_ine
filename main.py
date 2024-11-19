@@ -34,7 +34,7 @@ def apply_stl(series, verbose=False):
         deseasonalised_series = pd.Series(series_adj, index=series.index)
         return deseasonalised_series
     except Exception as e:
-        logging.error(f"CiSSA decomposition failed: {e}")
+        logging.error(f"STL decomposition failed: {e}")
         return None
 
 def apply_cissa(series, verbose=False):
@@ -119,7 +119,10 @@ def main(args):
     if args.stl:
         logging.info("Applying STL decomposition...")
         try:
-            pass
+            for sex in ['h', 'm']:
+                for age_group in ['15', '25']:
+                    deseasonalised_series[f'd{sex}{age_group}'] = apply_stl(data[f'd{sex}{age_group}'])
+                    deseasonalised_series[f'o{sex}{age_group}'] = apply_stl(data[f'o{sex}{age_group}'])
         except Exception as e:
             logging.error(f"STL decomposition failed: {e}")
 
