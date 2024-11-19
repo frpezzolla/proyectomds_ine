@@ -5,3 +5,4 @@
 .venv
 Datos/
 __pycache__
+!data/diagnostics/*/*.csv

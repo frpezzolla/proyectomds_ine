@@ -53,18 +53,19 @@ def apply_cissa(series, verbose=False):
         return None
     
 def run_diagnostics(model, tasa, outlier_serie):
+    print(f"Corriendo diagnostico para {model.__name__}")
     out_analist = outlier_analysis.OutlierAnalysis()    
     span_analist = outlier_analysis.SlidingOutliers(model())
     history_analist = outlier_analysis.RevisionOutlier(model())
-    start_outlier = outlier_serie.index[-1].date().isoformat().replace('-','')
+    start_outlier = outlier_serie.index[0].date().isoformat().replace('-','')
     end_outlier = outlier_serie.index[-1].date().isoformat().replace('-','')
+    path = Path(f'./data/diagnostics/{model.__name__}_out{end_outlier}')
+    path.mkdir(exist_ok=True)
     out_analist.fit(tasa, outlier=outlier_serie)
     instance_model = model()
     # out_analist.seasonality_diff(x13model)
     out_analist.model_evolution(instance_model).to_csv(path.joinpath('mse_comp_real.csv'))
     out_analist.plot_evol()
-    path = Path(f'./data/diagnostics/{model.__name__}_out{end_outlier}')
-    path.mkdir(exist_ok=True)
     with open(path.joinpath('metrics.md'), 'w', encoding='utf-8') as file:
         file.write(f"Contraste de entrenamiento entre modelo con datos hasta la pandemia ({start_outlier}, {end_outlier}), y modelo con datos hasta último registro\n\n")
         file.write("Diagnostivo Slidings Spans. MSE entre valores A\% para los dos modelos, de la forma\n $$\\frac{max_j A_t^j - min_j A_t^j}{min_j A_t^j}$$\n")
@@ -144,36 +145,36 @@ def main(args):
 
     # =========================================================================
     # Import data
-    data = import_data(args.input)
+    # data = import_data(args.input)
 
     # =========================================================================
     # Apply STD methods
     
-    deseasonalised_series = {}
+    # deseasonalised_series = {}
     
-    if args.x13:
-        logging.info("Applying X13-ARIMA-SEATS decomposition...")
-        try:
-            pass
-        except Exception as e:
-            logging.error(f"X13 decomposition failed: {e}")
+    # if args.x13:
+    #     logging.info("Applying X13-ARIMA-SEATS decomposition...")
+    #     try:
+    #         pass
+    #     except Exception as e:
+    #         logging.error(f"X13 decomposition failed: {e}")
 
-    if args.stl:
-        logging.info("Applying STL decomposition...")
-        try:
-            for sex in ['h', 'm']:
-                for age_group in ['15', '25']:
-                    deseasonalised_series[f'd{sex}{age_group}'] = apply_stl(data[f'd{sex}{age_group}'])
-                    deseasonalised_series[f'o{sex}{age_group}'] = apply_stl(data[f'o{sex}{age_group}'])
-        except Exception as e:
-            logging.error(f"STL decomposition failed: {e}")
+    # if args.stl:
+    #     logging.info("Applying STL decomposition...")
+    #     try:
+    #         for sex in ['h', 'm']:
+    #             for age_group in ['15', '25']:
+    #                 deseasonalised_series[f'd{sex}{age_group}'] = apply_stl(data[f'd{sex}{age_group}'])
+    #                 deseasonalised_series[f'o{sex}{age_group}'] = apply_stl(data[f'o{sex}{age_group}'])
+    #     except Exception as e:
+    #         logging.error(f"STL decomposition failed: {e}")
 
-    if args.cissa:
-        logging.info("Applying CiSSA decomposition...")
-        for sex in ['h', 'm']:
-            for age_group in ['15', '25']:
-                deseasonalised_series[f'd{sex}{age_group}'] = apply_cissa(data[f'd{sex}{age_group}'])
-                deseasonalised_series[f'o{sex}{age_group}'] = apply_cissa(data[f'o{sex}{age_group}'])
+    # if args.cissa:
+    #     logging.info("Applying CiSSA decomposition...")
+    #     for sex in ['h', 'm']:
+    #         for age_group in ['15', '25']:
+    #             deseasonalised_series[f'd{sex}{age_group}'] = apply_cissa(data[f'd{sex}{age_group}'])
+    #             deseasonalised_series[f'o{sex}{age_group}'] = apply_cissa(data[f'o{sex}{age_group}'])
         
     # =========================================================================
     # Run diagnostics
@@ -186,15 +187,17 @@ def main(args):
     outlier_serie.loc[:] = 1
 
     # X13
-    try:
-        run_diagnostics(X13Model, tasa, outlier_serie=outlier_serie)
-    except Exception as e:
-        warnings.warn(traceback.format_exc())
+    # try:
+    run_diagnostics(X13Model, tasa, outlier_serie=outlier_serie)
+    # except Exception as e:
+        # warnings.warn(traceback.format_exc())
+
     # STL
-    try:
-        run_diagnostics(STLModel, tasa, outlier_serie=outlier_serie)
-    except Exception as e:
-        warnings.warn(traceback.format_exc())
+    # try:
+    run_diagnostics(STLModel, tasa, outlier_serie=outlier_serie)
+    # except Exception as e:
+    #     warnings.warn(traceback.format_exc())
+
     # CISSA
     try:
         run_diagnostics(CiSSAModel, tasa, outlier_serie=outlier_serie)
@@ -217,19 +220,19 @@ def main(args):
     # =========================================================================
     # Prepare results
     
-    results = data.copy()[['dh15', 'dm15', 'dh25', 'dm25', 'oh15', 'om15', 'oh25', 'om25',
-           'desocupados', 'ocupados', 'dh', 'dm', 'oh', 'om', 'ft_h', 'ft_m', 'ft',
-           'td_h', 'td_m', 'td']]
+    # results = data.copy()[['dh15', 'dm15', 'dh25', 'dm25', 'oh15', 'om15', 'oh25', 'om25',
+    #        'desocupados', 'ocupados', 'dh', 'dm', 'oh', 'om', 'ft_h', 'ft_m', 'ft',
+    #        'td_h', 'td_m', 'td']]
     
     # =========================================================================
     # Save results
-    output_file = os.path.join(args.output_dir, args.output)
-    try:
-        results.to_csv(output_file)
-        logging.info(f"Results saved to {output_file}")
-    except Exception as e:
-        logging.error(f"Error saving results: {e}")
-        sys.exit(1)
+    # output_file = os.path.join(args.output_dir, args.output)
+    # try:
+    #     results.to_csv(output_file)
+    #     logging.info(f"Results saved to {output_file}")
+    # except Exception as e:
+    #     logging.error(f"Error saving results: {e}")
+    #     sys.exit(1)
 
 if __name__ == "__main__":
     
