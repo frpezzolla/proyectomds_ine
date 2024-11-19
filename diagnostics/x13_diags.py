@@ -111,7 +111,7 @@ class SlidingSpans():
     def predict(self):
         self.A_metric = self._A_ratio['success'].sum()/len(self._A_ratio['success'])
         self.MM_metric = self._MM_ratio['success'].sum()/len(self._MM_ratio['success'])
-        return {'A%:':self.A_metric, 'MM%': self.MM_metric}
+        return {'A%':self.A_metric, 'MM%': self.MM_metric}
 
 class RevisionHistory():
     def __init__(self, model:BaseModel) -> None:

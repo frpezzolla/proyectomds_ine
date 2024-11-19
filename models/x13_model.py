@@ -1,5 +1,5 @@
 from pandas import Series
-from statsmodels.tsa.x13 import x13_arima_analysis
+from statsmodels.tsa.x13 import x13_arima_analysis, X13Error
 from os import path
 from models.base import BaseModel
 import traceback
@@ -18,6 +18,8 @@ class X13Wrap(BaseModel):
                 x12path=x13as_path,
                 outlier=self.hiperparams.get('outlier'),
             )
+        except X13Error as e:
+            raise e
         except Exception as e:
             print(type(e).__name__, traceback.format_exc(), sep=': ')
             raise ValueError("Faltan hiperparámetros requeridos por el modelo")
