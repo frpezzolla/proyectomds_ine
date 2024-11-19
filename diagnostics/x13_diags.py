@@ -55,9 +55,9 @@ class SlidingSpans():
             # j_set = origin.iloc[j_index:j_index+self.span_len].copy()
         for n, j_set in enumerate(j_sets):   
             try:
-                # if self.model.__name__== 'x13_arima_analysis':
                 self.model.fit(endog=j_set)
                 x13j = self.model.adjust()
+                # if self.model.__name__== 'x13_arima_analysis':
                     # x13j = self.model(
                     #     endog=j_set,
                     #     maxorder=(1,1),

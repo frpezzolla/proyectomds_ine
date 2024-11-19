@@ -1,5 +1,5 @@
 # Importamos clase plantilla
-from base import BaseModel #models.base
+from models.base import BaseModel #models.base
 
 # Paquetes
 from statsmodels.tsa.seasonal import STL
@@ -8,9 +8,9 @@ import pandas as pd
 # Definimos la subclase
 class STLModel(BaseModel):
     # Inicializador
-    def __init__(self, hiperparams = {'seasonal': 13, 'robust': True}, outlier: pd.Series = None) -> None:
+    def __init__(self, hiperparams = {'seasonal': 13, 'robust': True}) -> None:
         # Herencia de características
-        super().__init__(hiperparams, outlier)
+        super().__init__(hiperparams)
         
 
     def adjust(self) -> pd.Series:
@@ -28,7 +28,7 @@ class STLModel(BaseModel):
 
         # Calcular la serie ajustada (tendencia + residuo)
         self._seasadj = self.model_obj.trend + self.model_obj.resid
-        return self._seasadj
+        return self
 
     def trend_cycle(self) -> pd.Series:
         """

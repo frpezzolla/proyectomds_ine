@@ -3,7 +3,7 @@ from statsmodels.tsa.x13 import x13_arima_analysis
 
 
 class BaseModel():
-    def __init__(self, hiperparams:dict, outlier:pd.Series=None) -> None:
+    def __init__(self, hiperparams:dict) -> None:
         self.hiperparams = hiperparams
         self.endog = None
         self.exog = None
@@ -16,7 +16,7 @@ class BaseModel():
         return self
     
     def adjust(self):
-        pass
+        return self
 
     def trend_cycle(self) -> pd.Series:
         pass

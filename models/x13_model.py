@@ -6,8 +6,8 @@ import traceback
 
 x13as_path = path.abspath("C:/Program Files/x13as")
 class X13Wrap(BaseModel):
-    def __init__(self, hiperparams:dict={'maxorder':(1,1), 'outlier':False}, outlier: Series = None) -> None:
-        super().__init__(hiperparams, outlier)
+    def __init__(self, hiperparams:dict={'maxorder':(1,1), 'outlier':False}) -> None:
+        super().__init__(hiperparams)
         
     def adjust(self):
         try:
@@ -22,7 +22,7 @@ class X13Wrap(BaseModel):
             print(type(e).__name__, traceback.format_exc(), sep=': ')
             raise ValueError("Faltan hiperparámetros requeridos por el modelo")
         self._seasadj = self.model_obj.seasadj.rename('seasadj')
-        return self._seasadj
+        return self
     
     @property
     def __name__(self):

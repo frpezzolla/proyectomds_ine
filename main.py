@@ -132,28 +132,30 @@ def main(args):
         
     # =========================================================================
     # Run diagnostics
-    serie = pd.read_csv("./data/endogena/to202406.csv")
-    serie.index = pd.DatetimeIndex(serie.pop('ds'))
+    tasa = pd.read_csv("./data/endogena/to202406.csv")
+    tasa.index = pd.DatetimeIndex(tasa.pop('ds'))
+    tasa = tasa['to']
 
     outlier_serie = pd.Series(pd.date_range(start='2020-01-01', end='2022-05-01', freq='MS'))
     outlier_serie.index = pd.DatetimeIndex(outlier_serie)
     outlier_serie.loc[:] = 1
     # X13
+    x13model = X13Wrap()
     out_analist = outlier.OutlierAnalysis()    
-    span_analist = outlier.SlidingOutliers(X13Wrap)
-    history_analist = outlier.RevisionOutlier(X13Wrap)
+    span_analist = outlier.SlidingOutliers(x13model)
+    history_analist = outlier.RevisionOutlier(x13model)
     
-    out_analist.fit(serie, outlier=outlier_serie)
-    out_analist.seasonality_diff(X13Wrap)
-    out_analist.model_evolution()
+    out_analist.fit(tasa, outlier=outlier_serie)
+    out_analist.seasonality_diff(x13model)
+    out_analist.model_evolution(x13model)
     out_analist.plot_evol()
 
-    span_analist.A_mse(serie, outlier=outlier_serie)
-    span_analist.MM_mse(serie, outlier=outlier_serie)
-    span_analist.A_analysis(serie, outlier=outlier_serie)
-    span_analist.MM_analysis(serie, outlier=outlier_serie)
+    span_analist.A_mse(tasa, outlier=outlier_serie)
+    span_analist.MM_mse(tasa, outlier=outlier_serie)
+    span_analist.A_analysis(tasa, outlier=outlier_serie)
+    span_analist.MM_analysis(tasa, outlier=outlier_serie)
 
-    history_analist.fit(serie)
+    history_analist.fit(tasa)
     history_analist.A_analysis(outlier=outlier_serie)
     history_analist.C_analysis(outlier=outlier_serie)
 

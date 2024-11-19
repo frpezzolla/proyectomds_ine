@@ -139,7 +139,7 @@ class OutlierAnalysis():
         last_date = self.end
         while last_date in self.serie.index:
             cropped = self.serie[:last_date + pd.DateOffset(months=1)]
-            self.mses.append(self.seasonality_diff(serie=cropped, seasonal_model=seasonal_model, mse_limit=self.start))
+            self.mses.append(self.seasonality_diff(serie=cropped, seasonal_model=seasonal_model))
             last_date = last_date + pd.DateOffset(months=1)
     
     def plot_evol(self):
