@@ -15,7 +15,7 @@ from models.x13_model import X13Model
 from models.stl import STLModel
 from models.cissa import CiSSAModel
 
-from diagnostics import outlier
+from diagnostics import outlier_analysis
 
 from utils.setup_logging import setup as setup_logging
 
@@ -53,19 +53,20 @@ def apply_cissa(series, verbose=False):
         return None
     
 def run_diagnostics(model, tasa, outlier_serie):
-    out_analist = outlier.OutlierAnalysis()    
-    span_analist = outlier.SlidingOutliers(model())
-    history_analist = outlier.RevisionOutlier(model())
-    
+    out_analist = outlier_analysis.OutlierAnalysis()    
+    span_analist = outlier_analysis.SlidingOutliers(model())
+    history_analist = outlier_analysis.RevisionOutlier(model())
+    start_outlier = outlier_serie.index[-1].date().isoformat().replace('-','')
+    end_outlier = outlier_serie.index[-1].date().isoformat().replace('-','')
     out_analist.fit(tasa, outlier=outlier_serie)
     instance_model = model()
     # out_analist.seasonality_diff(x13model)
-    out_analist.model_evolution(instance_model)
+    out_analist.model_evolution(instance_model).to_csv(path.joinpath('mse_comp_real.csv'))
     out_analist.plot_evol()
-    path = Path(f'./data/diagnostics/{model.__name__}')
+    path = Path(f'./data/diagnostics/{model.__name__}_out{end_outlier}')
     path.mkdir(exist_ok=True)
     with open(path.joinpath('metrica.md'), 'w', encoding='utf-8') as file:
-        file.write(f"Contraste de entrenamiento entre modelo con datos hasta la pandemia, y modelo con datos hasta último registro\n\n")
+        file.write(f"Contraste de entrenamiento entre modelo con datos hasta la pandemia ({start_outlier}, {end_outlier}), y modelo con datos hasta último registro\n\n")
         file.write("Diagnostivo Slidings Spans. MSE entre valores A\% para los dos modelos, de la forma\n $$\\frac{max_j A_t^j - min_j A_t^j}{min_j A_t^j}$$\n")
         mse = f"MSE: {str(span_analist.A_mse(tasa, outlier=outlier_serie))}\n\n"
         file.write(mse)
