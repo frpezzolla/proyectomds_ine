@@ -142,6 +142,10 @@ class OutlierAnalysis():
             cropped = self.serie[:last_date + pd.DateOffset(months=1)]
             self.mses.append(self.seasonality_diff(serie=cropped, seasonal_model=seasonal_model))
             last_date = last_date + pd.DateOffset(months=1)
+        self.mses = pd.Series(self.mses)
+        self.mses.index = self.serie[self.end:].index
+        self.mses.index.name = 'ds'
+        return self.mses.rename('mse-compuesta-real')
     
     def plot_evol(self):
         fig = go.Figure(go.Scatter(x=self.serie[self.end:].index, y=self.mses))
