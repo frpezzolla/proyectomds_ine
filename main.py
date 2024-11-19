@@ -3,12 +3,15 @@ import logging
 import os
 import sys
 import shlex
+from pathlib import Path
+import warnings
+import traceback
 
 import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from models.x13_model import X13Wrap
+from models.x13_model import X13Model
 from models.stl import STLModel
 from models.cissa import CiSSAModel
 
@@ -49,8 +52,47 @@ def apply_cissa(series, verbose=False):
         logging.error(f"CiSSA decomposition failed: {e}")
         return None
     
-def run_diagnostics():
-    pass
+def run_diagnostics(model, tasa, outlier_serie):
+    out_analist = outlier.OutlierAnalysis()    
+    span_analist = outlier.SlidingOutliers(model())
+    history_analist = outlier.RevisionOutlier(model())
+    
+    out_analist.fit(tasa, outlier=outlier_serie)
+    instance_model = model()
+    # out_analist.seasonality_diff(x13model)
+    out_analist.model_evolution(instance_model)
+    out_analist.plot_evol()
+    path = Path(f'./data/diagnostics/{model.__name__}')
+    path.mkdir(exist_ok=True)
+    with open(path.joinpath('metrica.md'), 'w', encoding='utf-8') as file:
+        file.write(f"Contraste de entrenamiento entre modelo con datos hasta la pandemia, y modelo con datos hasta último registro\n\n")
+        file.write("Diagnostivo Slidings Spans. MSE entre valores A\% para los dos modelos, de la forma\n $$\\frac{max_j A_t^j - min_j A_t^j}{min_j A_t^j}$$\n")
+        mse = f"MSE: {str(span_analist.A_mse(tasa, outlier=outlier_serie))}\n\n"
+        file.write(mse)
+        file.write("Diagnostivo Slidings Spans. MSE entre valores MM\% para los dos modelos, de la forma\n $$max_j \\frac{A_t^j}{A_{t-1}^j} - min_j \\frac{A_t^j}{A_{t-1}^j}$$\n")
+        mse = f"MSE: {str(span_analist.MM_mse(tasa, outlier=outlier_serie))}\n\n"
+        file.write(mse)
+        saa = span_analist.A_analysis(tasa, outlier=outlier_serie)
+        smma = span_analist.MM_analysis(tasa, outlier=outlier_serie)
+        test = f"Test A% pre-pandemia: {saa['pre_percentage']}\n"
+        file.write(test)
+        test = f"Test A% todos los datos: {saa['pos_percentage']}\n"
+        file.write(test)
+        test = f"Test MM% pre-pandemia: {smma['pre_percentage']}\n"
+        file.write(test)
+        test = f"Test MM% todos los datos: {smma['pos_percentage']}\n"
+        file.write(test)
+
+    saa['pre'].to_csv(path.joinpath('A%_pre.csv'))
+    saa['pos'].to_csv(path.joinpath('A%_pos.csv'))
+
+    smma['pre'].to_csv(path.joinpath('MM%_pre.csv'))
+    smma['pos'].to_csv(path.joinpath('MM%_pos.csv'))
+
+
+    history_analist.fit(tasa)
+    history_analist.A_analysis(outlier=outlier_serie).to_csv(path.joinpath('RY.csv'))
+    history_analist.C_analysis(outlier=outlier_serie).to_csv(path.joinpath('CY.csv'))
 
 def import_data(file_dir):
     try:
@@ -134,44 +176,29 @@ def main(args):
         
     # =========================================================================
     # Run diagnostics
-    # tasa = pd.read_csv("./data/endogena/to202406.csv")
-    # tasa.index = pd.DatetimeIndex(tasa.pop('ds'))
-    # tasa = tasa['to']
+    tasa = pd.read_csv("./data/endogena/to202406.csv")
+    tasa.index = pd.DatetimeIndex(tasa.pop('ds'))
+    tasa = tasa['to']
 
-    # outlier_serie = pd.Series(pd.date_range(start='2020-01-01', end='2022-05-01', freq='MS'))
-    # outlier_serie.index = pd.DatetimeIndex(outlier_serie)
-    # outlier_serie.loc[:] = 1
-    # # X13
-    # x13model = X13Wrap()
-    # out_analist = outlier.OutlierAnalysis()    
-    # span_analist = outlier.SlidingOutliers(x13model)
-    # history_analist = outlier.RevisionOutlier(x13model)
-    
-    # out_analist.fit(tasa, outlier=outlier_serie)
-    # out_analist.seasonality_diff(x13model)
-    # out_analist.model_evolution(x13model)
-    # out_analist.plot_evol()
+    outlier_serie = pd.Series(pd.date_range(start='2020-01-01', end='2022-05-01', freq='MS'))
+    outlier_serie.index = pd.DatetimeIndex(outlier_serie)
+    outlier_serie.loc[:] = 1
 
-    # span_analist.A_mse(tasa, outlier=outlier_serie)
-    # span_analist.MM_mse(tasa, outlier=outlier_serie)
-    # span_analist.A_analysis(tasa, outlier=outlier_serie)
-    # span_analist.MM_analysis(tasa, outlier=outlier_serie)
-
-    # history_analist.fit(tasa)
-    # history_analist.A_analysis(outlier=outlier_serie)
-    # history_analist.C_analysis(outlier=outlier_serie)
-
-
-    # # STL
-    # out_analist = outlier.OutlierAnalysis(STLModel)    
-    # span_analist = outlier.SlidingOutliers(STLModel)
-    # history_analist = outlier.RevisionOutlier(STLModel)
-
-    # # CISSA
-    # out_analist = outlier.OutlierAnalysis()    
-    # span_analist = outlier.SlidingOutliers()
-    # history_analist = outlier.RevisionOutlier()
-    
+    # X13
+    try:
+        run_diagnostics(X13Model, tasa, outlier_serie=outlier_serie)
+    except Exception as e:
+        warnings.warn(traceback.format_exc())
+    # STL
+    try:
+        run_diagnostics(STLModel, tasa, outlier_serie=outlier_serie)
+    except Exception as e:
+        warnings.warn(traceback.format_exc())
+    # CISSA
+    try:
+        run_diagnostics(CiSSAModel, tasa, outlier_serie=outlier_serie)
+    except Exception as e:
+        warnings.warn(traceback.format_exc())
     # =========================================================================
     # Calculate unemployment rates
     # results = data.copy()[['dh15', 'dm15', 'dh25', 'dm25', 'oh15', 'om15', 'oh25', 'om25']]

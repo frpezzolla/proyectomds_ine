@@ -5,7 +5,7 @@ from models.base import BaseModel
 import traceback
 
 x13as_path = path.abspath("C:/Program Files/x13as")
-class X13Wrap(BaseModel):
+class X13Model(BaseModel):
     def __init__(self, hiperparams:dict={'maxorder':(1,1), 'outlier':False}) -> None:
         super().__init__(hiperparams)
         
@@ -25,14 +25,9 @@ class X13Wrap(BaseModel):
             raise ValueError("Faltan hiperparámetros requeridos por el modelo")
         self._seasadj = self.model_obj.seasadj.rename('seasadj')
         return self
-    
-    @property
-    def __name__(self):
-        return x13_arima_analysis.__name__
-
 
 if __name__=='__main__':
-    asdf = X13Wrap(hiperparams={})
+    asdf = X13Model(hiperparams={})
     print(asdf.__name__)
     asdf.adjust()
     print(asdf.seasadj)

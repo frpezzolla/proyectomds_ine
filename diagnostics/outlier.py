@@ -80,7 +80,9 @@ class OutlierAnalysis():
         # Desestacionalización Serie compuesta por parte OFICIAL-PRONOSTICO-OFICIAL (Prepandemia-Pandemia-Pospandemia)
         # if seasonal_model.__name__== 'x13_arima_analysis':
         seasonal_model.fit(comp_serie)
-        x13comp = seasonal_model.adjust()
+        seasonal_model.adjust()
+        comp_adj = seasonal_model.seasadj.copy()
+
         # x13comp = seasonal_model(
         #     endog=comp_serie,
         #     maxorder=(1,1),
@@ -88,15 +90,14 @@ class OutlierAnalysis():
         #     outlier=False)
         # Predicción Serie Oficial
         seasonal_model.fit(serie)
-        x13real = seasonal_model.adjust()
+        seasonal_model.adjust()
+        real_adj = seasonal_model.seasadj.copy()
         # x13real = seasonal_model(
         #     endog=serie,
         #     maxorder=(1,1),
         #     x12path=x13as_path,
         #     outlier=False)
     
-        comp_adj = x13comp.seasadj
-        real_adj = x13real.seasadj
         self.comp_adj = comp_adj if serie is None else self.comp_adj
         self.real_adj = real_adj if serie is None else self.real_adj
 
@@ -134,7 +135,7 @@ class OutlierAnalysis():
         else:
             fig.add_traces(plots[mode])
     
-    def model_evolution(self, seasonal_model=x13_arima_analysis):
+    def model_evolution(self, seasonal_model:BaseModel):
         self.mses = []
         last_date = self.end
         while last_date in self.serie.index:
@@ -170,21 +171,27 @@ class SlidingOutliers(SlidingSpans):
         start = outlier.index[0]
         self.fit(serie[:start], inverse=True)
         preMM = self.MM_ratio().loc[:start, 'metric'].copy()
+        preMM.index.name = 'ds'
         preMM_percentage = self.predict()['MM%']
         self.fit(serie, inverse=True)
         posMM = self.MM_ratio().loc[:start, 'metric'].copy()
+        posMM.index.name = 'ds'
         posMM_percentage = self.predict()['MM%']
-        return {'preMM': preMM, 'preMM_percentage': preMM_percentage, 'posMM': posMM, 'posMM':posMM_percentage}
+        return {'pre': preMM.rename('preMM'), 'pre_percentage': preMM_percentage, 
+                'pos': posMM.rename('posMM'), 'pos_percentage':posMM_percentage}
 
     def A_analysis(self, serie:pd.Series, outlier:pd.Series):
         start = outlier.index[0]
         self.fit(serie[:start], inverse=True)
         preA = self.A_ratio().loc[:start, 'metric'].copy()
+        preA.index.name = 'ds'
         preA_percentage = self.predict()['A%']
         self.fit(serie, inverse=True)
         posA = self.A_ratio().loc[:start, 'metric'].copy()
+        posA.index.name = 'ds'
         posA_percentage = self.predict()['A%']
-        return {'preA': preA, 'preA_percentage': preA_percentage, 'posA': posA, 'posA':posA_percentage}
+        return {'pre': preA.rename('preA'), 'pre_percentage': preA_percentage,
+                'pos': posA.rename('posA'), 'pos_percentage':posA_percentage}
 
         
 class RevisionOutlier(RevisionHistory):
@@ -206,8 +213,10 @@ class RevisionOutlier(RevisionHistory):
                         )
                 else:
                     warnings.warn("Se definen más estaciones de las encontradas en la serie") 
-                    break                   
-            return pd.Series(residue)
+                    break
+            residue = pd.Series(residue).rename('Cambio mse de RY')
+            residue.index.name = 'ds'                   
+            return residue
         else:
             raise Exception("Es necesario aplicar método fit a serie")
         
@@ -227,7 +236,9 @@ class RevisionOutlier(RevisionHistory):
                 else:
                     warnings.warn("Se definen más estaciones de las encontradas en la serie")      
                     break
-            return pd.Series(residue)
+            residue = pd.Series(residue).rename('Cambio mse de CY')
+            residue.index.name = 'ds'                   
+            return residue
         else:
             raise Exception("Es necesario aplicar método fit a serie")
     
