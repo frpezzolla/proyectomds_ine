@@ -25,14 +25,17 @@ class OutlierAnalysis():
     :params: 
     :returns:
     """
-    def __init__(self, time_serie:pd.Series, start_date:pd.Timestamp=None, end_date:pd.Timestamp=None, forecast_model=SARIMAX, exogenous=[]) -> None:
-        self.serie = time_serie
+    def __init__(self, forecast_model=SARIMAX) -> None:
+        self.serie = None
         self.comp_serie = None
         self.comp_adj = None
         self.real_adj = None
-        self.start = start_date
-        self.end = end_date
         self.forecast_model = forecast_model
+
+    def fit(self, serie:pd.Series, outlier:pd.Series, exogenous=[]):
+        self.serie = serie
+        self.outlier = outlier
+        self.start, self.end = outlier.index[0], outlier.index[-1]
         self.outlier_period = (self.end.year-self.start.year)*12 + (self.end.month - self.start.month)
 
     def forecast(self, periods, serie=None, model=None):
@@ -73,29 +76,29 @@ class OutlierAnalysis():
 
         comp_serie = self.compose_serie(forecast_model, serie)
         
-        # Modelo X13-SARIMA
+        # Modelo X13-ARIMA
         # Desestacionalización Serie compuesta por parte OFICIAL-PRONOSTICO-OFICIAL (Prepandemia-Pandemia-Pospandemia)
-        if seasonal_model.__name__== 'x13_arima_analysis':
-            seasonal_model.fit(comp_serie)
-            x13comp = seasonal_model.adjust()
-            # x13comp = seasonal_model(
-            #     endog=comp_serie,
-            #     maxorder=(1,1),
-            #     x12path=x13as_path,
-            #     outlier=False)
-            # Predicción Serie Oficial
-            seasonal_model.fit(serie)
-            x13real = seasonal_model.adjust()
-            # x13real = seasonal_model(
-            #     endog=serie,
-            #     maxorder=(1,1),
-            #     x12path=x13as_path,
-            #     outlier=False)
-        
-            comp_adj = x13comp.seasadj
-            real_adj = x13real.seasadj
-            self.comp_adj = comp_adj if serie is None else self.comp_adj
-            self.real_adj = real_adj if serie is None else self.real_adj
+        # if seasonal_model.__name__== 'x13_arima_analysis':
+        seasonal_model.fit(comp_serie)
+        x13comp = seasonal_model.adjust()
+        # x13comp = seasonal_model(
+        #     endog=comp_serie,
+        #     maxorder=(1,1),
+        #     x12path=x13as_path,
+        #     outlier=False)
+        # Predicción Serie Oficial
+        seasonal_model.fit(serie)
+        x13real = seasonal_model.adjust()
+        # x13real = seasonal_model(
+        #     endog=serie,
+        #     maxorder=(1,1),
+        #     x12path=x13as_path,
+        #     outlier=False)
+    
+        comp_adj = x13comp.seasadj
+        real_adj = x13real.seasadj
+        self.comp_adj = comp_adj if serie is None else self.comp_adj
+        self.real_adj = real_adj if serie is None else self.real_adj
 
         mse_limit = slice(mse_limit)
         model_diff = mean_squared_error(comp_adj.loc[mse_limit], real_adj.loc[mse_limit]) # MSE sin contabilizar directamente nuevos datos

@@ -8,9 +8,9 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from models.cissa import get_cissa
 from models.x13_model import X13Wrap
 from models.stl import STLModel
+from models.cissa import get_cissa
 
 from diagnostics import outlier
 
@@ -121,8 +121,22 @@ def main(args):
         
     # =========================================================================
     # Run diagnostics
-    # TODO
     
+    # X13
+    out_analist = outlier.OutlierAnalysis(X13Wrap)    
+    span_analist = outlier.SlidingOutliers(X13Wrap)
+    history_analist = outlier.RevisionOutlier(X13Wrap)
+
+
+    # STL
+    out_analist = outlier.OutlierAnalysis(STLModel)    
+    span_analist = outlier.SlidingOutliers(STLModel)
+    history_analist = outlier.RevisionOutlier(STLModel)
+
+    # CISSA
+    out_analist = outlier.OutlierAnalysis()    
+    span_analist = outlier.SlidingOutliers()
+    history_analist = outlier.RevisionOutlier()
     # =========================================================================
     # Calculate unemployment rates
     results = data.copy()[['dh15', 'dm15', 'dh25', 'dm25', 'oh15', 'om15', 'oh25', 'om25']]

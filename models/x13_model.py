@@ -1,3 +1,4 @@
+from pandas import Series
 from statsmodels.tsa.x13 import x13_arima_analysis
 from os import path
 from models.base import BaseModel
@@ -5,6 +6,9 @@ import traceback
 
 x13as_path = path.abspath("C:/Program Files/x13as")
 class X13Wrap(BaseModel):
+    def __init__(self, hiperparams:dict={'maxorder':(1,1), 'outlier':False}, outlier: Series = None) -> None:
+        super().__init__(hiperparams, outlier)
+        
     def adjust(self):
         try:
             self.model_obj = x13_arima_analysis(
