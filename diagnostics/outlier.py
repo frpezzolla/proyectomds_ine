@@ -25,14 +25,14 @@ class OutlierAnalysis():
     :params: 
     :returns:
     """
-    def __init__(self, forecast_model=SARIMAX) -> None:
+    def __init__(self, forecast_model=SARIMAX, exogenous=[]) -> None:
         self.serie = None
         self.comp_serie = None
         self.comp_adj = None
         self.real_adj = None
         self.forecast_model = forecast_model
 
-    def fit(self, serie:pd.Series, outlier:pd.Series, exogenous=[]):
+    def fit(self, serie:pd.Series, outlier:pd.Series):
         self.serie = serie
         self.outlier = outlier
         self.start, self.end = outlier.index[0], outlier.index[-1]
@@ -70,7 +70,7 @@ class OutlierAnalysis():
         self.comp_serie = comp_serie if serie is None else self.comp_serie
         return comp_serie
     
-    def seasonality_diff(self, seasonal_model:BaseModel, serie=None,  forecast_model=None, mse_limit=None):
+    def seasonality_diff(self, seasonal_model:BaseModel, serie=None,  forecast_model=None):
         serie = self.serie if serie is None else serie
         forecast_model = self.forecast_model if forecast_model is None else forecast_model
 
@@ -100,8 +100,7 @@ class OutlierAnalysis():
         self.comp_adj = comp_adj if serie is None else self.comp_adj
         self.real_adj = real_adj if serie is None else self.real_adj
 
-        mse_limit = slice(mse_limit)
-        model_diff = mean_squared_error(comp_adj.loc[mse_limit], real_adj.loc[mse_limit]) # MSE sin contabilizar directamente nuevos datos
+        model_diff = mean_squared_error(comp_adj.loc[:self.start], real_adj.loc[:self.start]) # MSE sin contabilizar directamente nuevos datos
         print("MSE para desestacionalización Tasa compuesta y Tasa real: ", model_diff)
         
         return model_diff
