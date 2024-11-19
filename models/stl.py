@@ -1,5 +1,5 @@
 # Importamos clase plantilla
-from models.base import BaseModel
+from base import BaseModel #models.base
 
 # Paquetes
 from statsmodels.tsa.seasonal import STL
@@ -8,11 +8,10 @@ import pandas as pd
 # Definimos la subclase
 class STLModel(BaseModel):
     # Inicializador
-    # def __init__(self, hiperparams: dict, outlier: pd.Series = None) -> None:
-    #     # Herencia de características
-    #     super().__init__(hiperparams, outlier)
-    #     # Guardar el resultado
-    #     self.model_obj = None
+    def __init__(self, hiperparams = {'seasonal': 13, 'robust': True}, outlier: pd.Series = None) -> None:
+        # Herencia de características
+        super().__init__(hiperparams, outlier)
+        
 
     def adjust(self) -> pd.Series:
         """
@@ -21,7 +20,7 @@ class STLModel(BaseModel):
         """
         if self.endog is None:
             raise ValueError("Debe llamar al método fit con una serie antes de ajustar.")
-        
+
         # Configurar STL con hiperparámetros
         stl = STL(self.endog, **self.hiperparams)
         # Ajustamos y guardamos en la variable correspondiente
@@ -64,13 +63,11 @@ class STLModel(BaseModel):
 # --------------------------------------------------------------------------------------------------
 # Ejemplo de uso
 # --------------------------------------------------------------------------------------------------
-if __name__=='__main___':
-    pass
-    # Diccionario de hiperparámetros
-    #hiperparams = {'seasonal': 13, 'robust': True}
+#if __name__=='__main___':
+    #pass
 
     # Instanciamos
-    #stl_model = STLModel(hiperparams)
+    #stl_model = STLModel()
 
     # Leemos la base y la formateamos
 
