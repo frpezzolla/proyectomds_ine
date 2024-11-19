@@ -158,9 +158,12 @@ python main.py -i data/datos_empleo.csv --stl
 proyectomds_ine/
 ├── README.md
 ├── requirements.txt
+├── arguments.txt
 ├── main.py
 ├── data/
 │   └── (archivos de datos de entrada)
+├── output/
+│   └── (resultados generados)
 ├── diagnostics/
 │   ├── __init__.py
 │   ├── sliding_spans.py
@@ -171,11 +174,13 @@ proyectomds_ine/
 │   └── (archivos de registro)
 ├── models/
 │   ├── __init__.py
+│   ├── base.py
 │   ├── cissa.py
 │   ├── x13.py
 │   └── stl.py
-└── plots/
-    └── (gráficos generados)
+└── utils/
+    ├── logging.py
+    └── plotting.py
 ```
 
 ## Licencia
