@@ -65,7 +65,7 @@ def run_diagnostics(model, tasa, outlier_serie):
     out_analist.plot_evol()
     path = Path(f'./data/diagnostics/{model.__name__}_out{end_outlier}')
     path.mkdir(exist_ok=True)
-    with open(path.joinpath('metrica.md'), 'w', encoding='utf-8') as file:
+    with open(path.joinpath('metrics.md'), 'w', encoding='utf-8') as file:
         file.write(f"Contraste de entrenamiento entre modelo con datos hasta la pandemia ({start_outlier}, {end_outlier}), y modelo con datos hasta último registro\n\n")
         file.write("Diagnostivo Slidings Spans. MSE entre valores A\% para los dos modelos, de la forma\n $$\\frac{max_j A_t^j - min_j A_t^j}{min_j A_t^j}$$\n")
         mse = f"MSE: {str(span_analist.A_mse(tasa, outlier=outlier_serie))}\n\n"
