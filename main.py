@@ -34,8 +34,8 @@ def apply_stl(series, verbose=False):
         stl_model = STLModel()
         stl_model.fit(series)
         series_adj = stl_model.adjust()
-        deseasonalised_series = pd.Series(series_adj, index=series.index)
-        return deseasonalised_series
+        #deseasonalised_series = pd.Series(series_adj, index=series.index)
+        return series_adj.seasadj
     except Exception as e:
         logging.error(f"STL decomposition failed: {e}")
         return None
