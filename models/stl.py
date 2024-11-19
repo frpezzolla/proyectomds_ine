@@ -1,5 +1,5 @@
 # Importamos clase plantilla
-from base import BaseModel #models.base
+from models.base import BaseModel #models.base
 
 # Paquetes
 from statsmodels.tsa.seasonal import STL
@@ -25,7 +25,7 @@ class STLModel(BaseModel):
         stl = STL(self.endog, **self.hiperparams)
         # Ajustamos y guardamos en la variable correspondiente
         self.model_obj = stl.fit()
-
+        
         # Calcular la serie ajustada (tendencia + residuo)
         self._seasadj = self.model_obj.trend + self.model_obj.resid
         return self._seasadj
