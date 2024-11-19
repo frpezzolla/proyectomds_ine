@@ -10,7 +10,7 @@ import pandas as pd
 
 from models.x13_model import X13Wrap
 from models.stl import STLModel
-from models.cissa import get_cissa
+from models.cissa import CiSSAModel
 
 from diagnostics import outlier
 
@@ -42,10 +42,9 @@ def apply_cissa(series, verbose=False):
     if verbose:
         logging.info("Applying CiSSA decomposition...")
     try:
-        reconstructed_series, singular_values, groups = get_cissa(series)
-        # do something with the seasonal trend decomposition
-        deseasonalised_series = pd.Series(reconstructed_series['long term cycle'].flatten(), index=series.index)
-        return deseasonalised_series
+        cissa_model = CiSSAModel()
+        cissa_model.fit(series).adjust()
+        return cissa_model.seasadj
     except Exception as e:
         logging.error(f"CiSSA decomposition failed: {e}")
         return None
@@ -135,56 +134,64 @@ def main(args):
         
     # =========================================================================
     # Run diagnostics
-    tasa = pd.read_csv("./data/endogena/to202406.csv")
-    tasa.index = pd.DatetimeIndex(tasa.pop('ds'))
-    tasa = tasa['to']
+    # tasa = pd.read_csv("./data/endogena/to202406.csv")
+    # tasa.index = pd.DatetimeIndex(tasa.pop('ds'))
+    # tasa = tasa['to']
 
-    outlier_serie = pd.Series(pd.date_range(start='2020-01-01', end='2022-05-01', freq='MS'))
-    outlier_serie.index = pd.DatetimeIndex(outlier_serie)
-    outlier_serie.loc[:] = 1
-    # X13
-    x13model = X13Wrap()
-    out_analist = outlier.OutlierAnalysis()    
-    span_analist = outlier.SlidingOutliers(x13model)
-    history_analist = outlier.RevisionOutlier(x13model)
+    # outlier_serie = pd.Series(pd.date_range(start='2020-01-01', end='2022-05-01', freq='MS'))
+    # outlier_serie.index = pd.DatetimeIndex(outlier_serie)
+    # outlier_serie.loc[:] = 1
+    # # X13
+    # x13model = X13Wrap()
+    # out_analist = outlier.OutlierAnalysis()    
+    # span_analist = outlier.SlidingOutliers(x13model)
+    # history_analist = outlier.RevisionOutlier(x13model)
     
-    out_analist.fit(tasa, outlier=outlier_serie)
-    out_analist.seasonality_diff(x13model)
-    out_analist.model_evolution(x13model)
-    out_analist.plot_evol()
+    # out_analist.fit(tasa, outlier=outlier_serie)
+    # out_analist.seasonality_diff(x13model)
+    # out_analist.model_evolution(x13model)
+    # out_analist.plot_evol()
 
-    span_analist.A_mse(tasa, outlier=outlier_serie)
-    span_analist.MM_mse(tasa, outlier=outlier_serie)
-    span_analist.A_analysis(tasa, outlier=outlier_serie)
-    span_analist.MM_analysis(tasa, outlier=outlier_serie)
+    # span_analist.A_mse(tasa, outlier=outlier_serie)
+    # span_analist.MM_mse(tasa, outlier=outlier_serie)
+    # span_analist.A_analysis(tasa, outlier=outlier_serie)
+    # span_analist.MM_analysis(tasa, outlier=outlier_serie)
 
-    history_analist.fit(tasa)
-    history_analist.A_analysis(outlier=outlier_serie)
-    history_analist.C_analysis(outlier=outlier_serie)
+    # history_analist.fit(tasa)
+    # history_analist.A_analysis(outlier=outlier_serie)
+    # history_analist.C_analysis(outlier=outlier_serie)
 
 
-    # STL
-    out_analist = outlier.OutlierAnalysis(STLModel)    
-    span_analist = outlier.SlidingOutliers(STLModel)
-    history_analist = outlier.RevisionOutlier(STLModel)
+    # # STL
+    # out_analist = outlier.OutlierAnalysis(STLModel)    
+    # span_analist = outlier.SlidingOutliers(STLModel)
+    # history_analist = outlier.RevisionOutlier(STLModel)
 
-    # CISSA
-    out_analist = outlier.OutlierAnalysis()    
-    span_analist = outlier.SlidingOutliers()
-    history_analist = outlier.RevisionOutlier()
+    # # CISSA
+    # out_analist = outlier.OutlierAnalysis()    
+    # span_analist = outlier.SlidingOutliers()
+    # history_analist = outlier.RevisionOutlier()
+    
     # =========================================================================
     # Calculate unemployment rates
-    results = data.copy()[['dh15', 'dm15', 'dh25', 'dm25', 'oh15', 'om15', 'oh25', 'om25']]
-    for sex in ['h', 'm']:
-        for age_group in ['15', '25']:
+    # results = data.copy()[['dh15', 'dm15', 'dh25', 'dm25', 'oh15', 'om15', 'oh25', 'om25']]
+    # for sex in ['h', 'm']:
+    #     for age_group in ['15', '25']:
             
-            unoccupied_original = data[f'd{sex}{age_group}']
-            occupied_original = data[f'o{sex}{age_group}']
-            results[f'{sex}{age_group}'] = unoccupied_original / (occupied_original + unoccupied_original)
+    #         unoccupied_original = data[f'd{sex}{age_group}']
+    #         occupied_original = data[f'o{sex}{age_group}']
+    #         results[f'{sex}{age_group}'] = unoccupied_original / (occupied_original + unoccupied_original)
             
-            unoccupied_deseasonalised = deseasonalised_series[f'd{sex}{age_group}']
-            occupied_deseasonalised = deseasonalised_series[f'o{sex}{age_group}']
-            results[f'{sex}{age_group}_deseasonalised'] = unoccupied_deseasonalised / (occupied_deseasonalised + unoccupied_deseasonalised)
+    #         unoccupied_deseasonalised = deseasonalised_series[f'd{sex}{age_group}']
+    #         occupied_deseasonalised = deseasonalised_series[f'o{sex}{age_group}']
+    #         results[f'{sex}{age_group}_deseasonalised'] = unoccupied_deseasonalised / (occupied_deseasonalised + unoccupied_deseasonalised)
+    
+    # =========================================================================
+    # Prepare results
+    
+    results = data.copy()[['dh15', 'dm15', 'dh25', 'dm25', 'oh15', 'om15', 'oh25', 'om25',
+           'desocupados', 'ocupados', 'dh', 'dm', 'oh', 'om', 'ft_h', 'ft_m', 'ft',
+           'td_h', 'td_m', 'td']]
     
     # =========================================================================
     # Save results
