@@ -134,7 +134,7 @@ def main(args):
     # Run diagnostics
     serie = pd.read_csv("./data/endogena/to202406.csv")
     serie.index = pd.DatetimeIndex(serie.pop('ds'))
-    
+
     outlier_serie = pd.Series(pd.date_range(start='2020-01-01', end='2022-05-01', freq='MS'))
     outlier_serie.index = pd.DatetimeIndex(outlier_serie)
     outlier_serie.loc[:] = 1
@@ -155,7 +155,7 @@ def main(args):
 
     history_analist.fit(serie)
     history_analist.A_analysis(outlier=outlier_serie)
-    history_analist.MM_analysis(outlier=outlier_serie)
+    history_analist.C_analysis(outlier=outlier_serie)
 
 
     # STL
