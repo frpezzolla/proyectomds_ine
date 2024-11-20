@@ -15,7 +15,7 @@ from models.x13_model import X13Model
 from models.stl import STLModel
 from models.cissa import CiSSAModel
 
-from diagnostics import outlier_analysis
+# from diagnostics import outlier_analysis
 
 from utils.setup_logging import setup as setup_logging
 
@@ -40,7 +40,7 @@ def apply_stl(series, verbose=False):
         logging.error(f"STL decomposition failed: {e}")
         return None
 
-def apply_cissa(series, verbose=False):
+def apply_cissa(series, verbose=False, save_decomposition=True):
     """Apply CiSSA decomposition to the provided series."""
     if verbose:
         logging.info("Applying CiSSA decomposition...")
@@ -145,46 +145,54 @@ def main(args):
 
     # =========================================================================
     # Import data
-    # data = import_data(args.input)
+    data = import_data(args.input)
 
     # =========================================================================
     # Apply STD methods
     
-    # deseasonalised_series = {}
+    deseasonalised_series = {}
     
-    # if args.x13:
-    #     logging.info("Applying X13-ARIMA-SEATS decomposition...")
-    #     try:
-    #         pass
-    #     except Exception as e:
-    #         logging.error(f"X13 decomposition failed: {e}")
+    if args.x13:
+        logging.info("Applying X13-ARIMA-SEATS decomposition...")
+        try:
+            for series in data.columns:
+                logging.info(f"Starting X13 decomposition for series {series}")
+                deseasonalised_series[series+'_std'] = apply_x13(data[series])
+        except Exception as e:
+            logging.error(f"X13 decomposition failed: {e}")
 
-    # if args.stl:
-    #     logging.info("Applying STL decomposition...")
-    #     try:
-    #         for sex in ['h', 'm']:
-    #             for age_group in ['15', '25']:
-    #                 deseasonalised_series[f'd{sex}{age_group}'] = apply_stl(data[f'd{sex}{age_group}'])
-    #                 deseasonalised_series[f'o{sex}{age_group}'] = apply_stl(data[f'o{sex}{age_group}'])
-    #     except Exception as e:
-    #         logging.error(f"STL decomposition failed: {e}")
+    if args.stl:
+        logging.info("Applying STL decomposition...")
+        try:
+            for series in data.columns:
+                logging.info(f"Starting STL decomposition for series {series}")
+                deseasonalised_series[series+'_std'] = apply_stl(data[series])
+        except Exception as e:
+            logging.error(f"STL decomposition failed: {e}")
 
-    # if args.cissa:
-    #     logging.info("Applying CiSSA decomposition...")
-    #     for sex in ['h', 'm']:
-    #         for age_group in ['15', '25']:
-    #             deseasonalised_series[f'd{sex}{age_group}'] = apply_cissa(data[f'd{sex}{age_group}'])
-    #             deseasonalised_series[f'o{sex}{age_group}'] = apply_cissa(data[f'o{sex}{age_group}'])
+    if args.cissa:
+        logging.info("Applying CiSSA decomposition...")
+        try:
+            for series in data.columns:
+                logging.info(f"Starting CiSSA decomposition for series {series}")
+                deseasonalised_series[series+'_std'] = apply_cissa(data[series])
+        except Exception as e:
+            logging.error(f"CiSSA decomposition failed: {e}")
+            
+    deseasonalised_df = pd.DataFrame(deseasonalised_series)
+    
+    results = pd.concat([data, deseasonalised_df], axis=1)
+    print(results.head())
         
     # =========================================================================
     # Run diagnostics
-    tasa = pd.read_csv("./data/endogena/to202406.csv")
-    tasa.index = pd.DatetimeIndex(tasa.pop('ds'))
-    tasa = tasa['to']
+    # tasa = pd.read_csv("./data/endogena/to202406.csv")
+    # tasa.index = pd.DatetimeIndex(tasa.pop('ds'))
+    # tasa = tasa['to']
 
-    outlier_serie = pd.Series(pd.date_range(start='2020-01-01', end='2022-05-01', freq='MS'))
-    outlier_serie.index = pd.DatetimeIndex(outlier_serie)
-    outlier_serie.loc[:] = 1
+    # outlier_serie = pd.Series(pd.date_range(start='2020-01-01', end='2022-05-01', freq='MS'))
+    # outlier_serie.index = pd.DatetimeIndex(outlier_serie)
+    # outlier_serie.loc[:] = 1
 
     # X13
     try:
@@ -218,21 +226,34 @@ def main(args):
     #         results[f'{sex}{age_group}_deseasonalised'] = unoccupied_deseasonalised / (occupied_deseasonalised + unoccupied_deseasonalised)
     
     # =========================================================================
-    # Prepare results
+    # PLOTTING
     
-    # results = data.copy()[['dh15', 'dm15', 'dh25', 'dm25', 'oh15', 'om15', 'oh25', 'om25',
-    #        'desocupados', 'ocupados', 'dh', 'dm', 'oh', 'om', 'ft_h', 'ft_m', 'ft',
-    #        'td_h', 'td_m', 'td']]
+    import matplotlib.pyplot as plt
+    
+    model_name = 'x13' if args.x13 else 'stl' if args.stl else 'cissa'
+    
+    for series in data.columns:
+        plt.figure(figsize=(6,4))
+        plt.title(f'{series} -- {model_name}')
+        plt.plot(results[series], label='oficial', lw=1)
+        plt.plot(results[series+'_std'], label='desestacionalizada', lw=1)
+        plt.xlabel('date')
+        plt.ylabel('rate')
+        plt.legend()
+        plt.grid()
+        plt.tight_layout()
+        plt.savefig(f'./outputs/graphs/{series}.pdf', bbox_inches='tight')
+        plt.show()
     
     # =========================================================================
     # Save results
-    # output_file = os.path.join(args.output_dir, args.output)
-    # try:
-    #     results.to_csv(output_file)
-    #     logging.info(f"Results saved to {output_file}")
-    # except Exception as e:
-    #     logging.error(f"Error saving results: {e}")
-    #     sys.exit(1)
+    output_file = os.path.join(args.output_dir, args.output)
+    try:
+        results.to_csv(output_file)
+        logging.info(f"Results saved to {output_file}")
+    except Exception as e:
+        logging.error(f"Error saving results: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     

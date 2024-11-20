@@ -176,11 +176,11 @@ class SlidingOutliers(SlidingSpans):
         self.fit(serie[:start], inverse=True)
         preMM = self.MM_ratio().loc[:start, 'metric'].copy()
         preMM.index.name = 'ds'
-        preMM_percentage = self.predict()['MM%']
+        preMM_percentage = self.predict()[r'MM%']
         self.fit(serie, inverse=True)
         posMM = self.MM_ratio().loc[:start, 'metric'].copy()
         posMM.index.name = 'ds'
-        posMM_percentage = self.predict()['MM%']
+        posMM_percentage = self.predict()[r'MM%']
         return {'pre': preMM.rename('preMM'), 'pre_percentage': preMM_percentage, 
                 'pos': posMM.rename('posMM'), 'pos_percentage':posMM_percentage}
 
@@ -189,11 +189,11 @@ class SlidingOutliers(SlidingSpans):
         self.fit(serie[:start], inverse=True)
         preA = self.A_ratio().loc[:start, 'metric'].copy()
         preA.index.name = 'ds'
-        preA_percentage = self.predict()['A%']
+        preA_percentage = self.predict()[r'A%']
         self.fit(serie, inverse=True)
         posA = self.A_ratio().loc[:start, 'metric'].copy()
         posA.index.name = 'ds'
-        posA_percentage = self.predict()['A%']
+        posA_percentage = self.predict()[r'A%']
         return {'pre': preA.rename('preA'), 'pre_percentage': preA_percentage,
                 'pos': posA.rename('posA'), 'pos_percentage':posA_percentage}
 
