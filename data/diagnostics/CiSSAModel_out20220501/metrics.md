@@ -1,4 +1,4 @@
-Contraste de entrenamiento entre modelo con datos hasta la pandemia (20220501, 20220501), y modelo con datos hasta último registro
+Contraste de entrenamiento entre modelo con datos hasta la pandemia (20200101, 20220501), y modelo con datos hasta último registro
 
 Diagnostivo Slidings Spans. MSE entre valores A\% para los dos modelos, de la forma
  $$\frac{max_j A_t^j - min_j A_t^j}{min_j A_t^j}$$

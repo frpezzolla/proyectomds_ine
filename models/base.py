@@ -34,5 +34,7 @@ class BaseModel():
         else:
             raise AttributeError("Para obtener serie ajustada debe entrenar el modelo")
 
-    
+    def to_csv(self):
+        if isinstance(self._seasadj, pd.Series):
+            self._seasadj.to_csv(f"./output/misc/{self.__name__}.csv")    
 

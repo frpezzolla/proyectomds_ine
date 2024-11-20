@@ -187,16 +187,16 @@ def main(args):
     outlier_serie.loc[:] = 1
 
     # X13
-    # try:
-    run_diagnostics(X13Model, tasa, outlier_serie=outlier_serie)
-    # except Exception as e:
-        # warnings.warn(traceback.format_exc())
+    try:
+        run_diagnostics(X13Model, tasa, outlier_serie=outlier_serie)
+    except Exception as e:
+        warnings.warn(traceback.format_exc())
 
     # STL
-    # try:
-    run_diagnostics(STLModel, tasa, outlier_serie=outlier_serie)
-    # except Exception as e:
-    #     warnings.warn(traceback.format_exc())
+    try:
+        run_diagnostics(STLModel, tasa, outlier_serie=outlier_serie)
+    except Exception as e:
+        warnings.warn(traceback.format_exc())
 
     # CISSA
     try:

@@ -136,7 +136,9 @@ class RevisionHistory():
                     #     outlier=False)
                 An = x13j.seasadj.rename(f'A*|[{date_n.date()}]')
                 A = pd.concat([A, An], axis=1)
-            except X13Error as e:
+            # except X13Error as e:
+                # pass
+            except:
                 pass
         if A.empty or len(A.columns)<2:
             raise X13Error("Serie muy corta para relizar diagnóstico")
