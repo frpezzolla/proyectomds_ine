@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import time
 import sys
 import shlex
 from pathlib import Path
@@ -108,11 +109,22 @@ def main(args):
     os.makedirs(args.log_dir, exist_ok=True)
 
     # =========================================================================
+    # TRANSFORM ENE
+    # =========================================================================
+
+    pass
+
+    # =========================================================================
     # IMPORT DATA
     # =========================================================================
-    
-    data = import_data(args.input)
-
+    ti = time.time()
+    timeout = 60
+    try:
+        data = import_data(args.input)
+    except FileNotFoundError:
+        wait = time.time()-ti
+        if timeout<wait:
+            print(f"Esperando archivos {wait}[s]", flush=True)
     # =========================================================================
     # APPLY STD METHODS
     # =========================================================================
@@ -128,7 +140,7 @@ def main(args):
         except Exception as e:
             logging.error(f"X13 decomposition failed: {e}")
 
-    if args.stl:
+    elif args.stl:
         logging.info("Applying STL decomposition...")
         try:
             for series in data.columns:
@@ -137,7 +149,7 @@ def main(args):
         except Exception as e:
             logging.error(f"STL decomposition failed: {e}")
 
-    if args.cissa:
+    elif args.cissa:
         logging.info("Applying CiSSA decomposition...")
         try:
             for series in data.columns:
@@ -190,17 +202,15 @@ def main(args):
     # CALCULATE UNEMPLOYMENT RATES
     # =========================================================================
 
-    results = data.copy()[['dh15', 'dm15', 'dh25', 'dm25', 'oh15', 'om15', 'oh25', 'om25']]
+    # results = data.copy()[['dh15', 'dm15', 'dh25', 'dm25', 'oh15', 'om15', 'oh25', 'om25']]
     for sex in ['h', 'm']:
         for age_group in ['15', '25']:
-            
-            unoccupied_original = data[f'd{sex}{age_group}']
+            unoccupied_original = results[f'd{sex}{age_group}']
             occupied_original = data[f'o{sex}{age_group}']
-            results[f'{sex}{age_group}'] = unoccupied_original / (occupied_original + unoccupied_original)
-            
-            unoccupied_deseasonalised = deseasonalised_series[f'd{sex}{age_group}']
-            occupied_deseasonalised = deseasonalised_series[f'o{sex}{age_group}']
-            results[f'{sex}{age_group}_deseasonalised'] = unoccupied_deseasonalised / (occupied_deseasonalised + unoccupied_deseasonalised)
+            results[f'd_rate_{sex}{age_group}'] = unoccupied_original / (occupied_original + unoccupied_original)
+            unoccupied_deseasonalised = results[f'd{sex}{age_group}_std']
+            occupied_deseasonalised = results[f'o{sex}{age_group}_std']
+            results[f'd_rate_{sex}{age_group}_std'] = unoccupied_deseasonalised / (occupied_deseasonalised + unoccupied_deseasonalised)
     
     # =========================================================================
     # PLOTTING
@@ -242,7 +252,7 @@ def main(args):
         plt.grid()
         plt.tight_layout()
         plt.savefig(f'./outputs/graphs/{series}.pdf', bbox_inches='tight')
-        plt.show()
+        # plt.show()
     
     # =========================================================================
     # SAVE RESULTS
