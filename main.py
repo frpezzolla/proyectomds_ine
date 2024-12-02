@@ -15,14 +15,22 @@ from models.x13_model import X13Model
 from models.stl import STLModel
 from models.cissa import CiSSAModel
 
-# from diagnostics import outlier_analysis
-
 from utils.setup_logging import setup as setup_logging
+from utils.diagnose import Diagnose
 
-def apply_x13(series):
+def apply_x13(series, verbose=False):
     """Apply X13-ARIMA-SEATS decomposition to the provided series."""
-    # TODO: Implement X13 decomposition and return the trend component
-    return
+    if verbose:
+        logging.info("Applying X13 decomposition...")
+    try:
+        x13_model = X13Model()
+        x13_model.fit(series)
+        series_adj = x13_model.adjust()
+        #deseasonalised_series = pd.Series(series_adj, index=series.index)
+        return series_adj.seasadj
+    except Exception as e:
+        logging.error(f"X13 decomposition failed: {e}")
+        return None
 
 def apply_stl(series, verbose=False):
     """Apply STL decomposition to the provided series.
@@ -51,50 +59,6 @@ def apply_cissa(series, verbose=False, save_decomposition=True):
     except Exception as e:
         logging.error(f"CiSSA decomposition failed: {e}")
         return None
-    
-def run_diagnostics(model, tasa, outlier_serie):
-    print(f"Corriendo diagnostico para {model.__name__}")
-    out_analist = outlier_analysis.OutlierAnalysis()    
-    span_analist = outlier_analysis.SlidingOutliers(model())
-    history_analist = outlier_analysis.RevisionOutlier(model())
-    start_outlier = outlier_serie.index[0].date().isoformat().replace('-','')
-    end_outlier = outlier_serie.index[-1].date().isoformat().replace('-','')
-    path = Path(f'./data/diagnostics/{model.__name__}_out{end_outlier}')
-    path.mkdir(exist_ok=True)
-    out_analist.fit(tasa, outlier=outlier_serie)
-    instance_model = model()
-    # out_analist.seasonality_diff(x13model)
-    out_analist.model_evolution(instance_model).to_csv(path.joinpath('mse_comp_real.csv'))
-    out_analist.plot_evol()
-    with open(path.joinpath('metrics.md'), 'w', encoding='utf-8') as file:
-        file.write(f"Contraste de entrenamiento entre modelo con datos hasta la pandemia ({start_outlier}, {end_outlier}), y modelo con datos hasta último registro\n\n")
-        file.write("Diagnostivo Slidings Spans. MSE entre valores A\% para los dos modelos, de la forma\n $$\\frac{max_j A_t^j - min_j A_t^j}{min_j A_t^j}$$\n")
-        mse = f"MSE: {str(span_analist.A_mse(tasa, outlier=outlier_serie))}\n\n"
-        file.write(mse)
-        file.write("Diagnostivo Slidings Spans. MSE entre valores MM\% para los dos modelos, de la forma\n $$max_j \\frac{A_t^j}{A_{t-1}^j} - min_j \\frac{A_t^j}{A_{t-1}^j}$$\n")
-        mse = f"MSE: {str(span_analist.MM_mse(tasa, outlier=outlier_serie))}\n\n"
-        file.write(mse)
-        saa = span_analist.A_analysis(tasa, outlier=outlier_serie)
-        smma = span_analist.MM_analysis(tasa, outlier=outlier_serie)
-        test = f"Test A% pre-pandemia: {saa['pre_percentage']}\n"
-        file.write(test)
-        test = f"Test A% todos los datos: {saa['pos_percentage']}\n"
-        file.write(test)
-        test = f"Test MM% pre-pandemia: {smma['pre_percentage']}\n"
-        file.write(test)
-        test = f"Test MM% todos los datos: {smma['pos_percentage']}\n"
-        file.write(test)
-
-    saa['pre'].to_csv(path.joinpath('A%_pre.csv'))
-    saa['pos'].to_csv(path.joinpath('A%_pos.csv'))
-
-    smma['pre'].to_csv(path.joinpath('MM%_pre.csv'))
-    smma['pos'].to_csv(path.joinpath('MM%_pos.csv'))
-
-
-    history_analist.fit(tasa)
-    history_analist.A_analysis(outlier=outlier_serie).to_csv(path.joinpath('RY.csv'))
-    history_analist.C_analysis(outlier=outlier_serie).to_csv(path.joinpath('CY.csv'))
 
 def import_data(file_dir):
     try:
@@ -144,11 +108,14 @@ def main(args):
     os.makedirs(args.log_dir, exist_ok=True)
 
     # =========================================================================
-    # Import data
+    # IMPORT DATA
+    # =========================================================================
+    
     data = import_data(args.input)
 
     # =========================================================================
-    # Apply STD methods
+    # APPLY STD METHODS
+    # =========================================================================
     
     deseasonalised_series = {}
     
@@ -183,58 +150,90 @@ def main(args):
     
     results = pd.concat([data, deseasonalised_df], axis=1)
     print(results.head())
-        
+
     # =========================================================================
-    # Run diagnostics
-    # tasa = pd.read_csv("./data/endogena/to202406.csv")
-    # tasa.index = pd.DatetimeIndex(tasa.pop('ds'))
-    # tasa = tasa['to']
-
-    # outlier_serie = pd.Series(pd.date_range(start='2020-01-01', end='2022-05-01', freq='MS'))
-    # outlier_serie.index = pd.DatetimeIndex(outlier_serie)
-    # outlier_serie.loc[:] = 1
-
-    # X13
-    try:
-        run_diagnostics(X13Model, tasa, outlier_serie=outlier_serie)
-    except Exception as e:
-        warnings.warn(traceback.format_exc())
-
-    # STL
-    try:
-        run_diagnostics(STLModel, tasa, outlier_serie=outlier_serie)
-    except Exception as e:
-        warnings.warn(traceback.format_exc())
-
-    # CISSA
-    try:
-        run_diagnostics(CiSSAModel, tasa, outlier_serie=outlier_serie)
-    except Exception as e:
-        warnings.warn(traceback.format_exc())
+    # RUN DIAGNOSTICS
     # =========================================================================
-    # Calculate unemployment rates
-    # results = data.copy()[['dh15', 'dm15', 'dh25', 'dm25', 'oh15', 'om15', 'oh25', 'om25']]
-    # for sex in ['h', 'm']:
-    #     for age_group in ['15', '25']:
+
+    if args.diagnose:
+        tasa = pd.read_csv("./data/endogena/to202406.csv")
+        tasa.index = pd.DatetimeIndex(tasa.pop('ds'))
+        tasa = tasa['to']
+
+        outlier_serie = pd.Series(pd.date_range(start='2020-01-01', end='2022-05-01', freq='MS'))
+        outlier_serie.index = pd.DatetimeIndex(outlier_serie)
+        outlier_serie.loc[:] = 1
+        diag = Diagnose(tasa)
+        diag.set_outlier(outlier_serie)
+        # X13
+        if args.x13:
+            try:
+                diag.outlier_diags(X13Model)
+            except Exception as e:
+                warnings.warn(traceback.format_exc())
+
+        # STL
+        if args.stl:
+            try:
+                diag.outlier_diags(STLModel)
+            except Exception as e:
+                warnings.warn(traceback.format_exc())
+
+        # CISSA
+        if args.cissa:
+            try:
+                diag.outlier_diags(CiSSAModel)
+            except Exception as e:
+                warnings.warn(traceback.format_exc())
+
+    # =========================================================================
+    # CALCULATE UNEMPLOYMENT RATES
+    # =========================================================================
+
+    results = data.copy()[['dh15', 'dm15', 'dh25', 'dm25', 'oh15', 'om15', 'oh25', 'om25']]
+    for sex in ['h', 'm']:
+        for age_group in ['15', '25']:
             
-    #         unoccupied_original = data[f'd{sex}{age_group}']
-    #         occupied_original = data[f'o{sex}{age_group}']
-    #         results[f'{sex}{age_group}'] = unoccupied_original / (occupied_original + unoccupied_original)
+            unoccupied_original = data[f'd{sex}{age_group}']
+            occupied_original = data[f'o{sex}{age_group}']
+            results[f'{sex}{age_group}'] = unoccupied_original / (occupied_original + unoccupied_original)
             
-    #         unoccupied_deseasonalised = deseasonalised_series[f'd{sex}{age_group}']
-    #         occupied_deseasonalised = deseasonalised_series[f'o{sex}{age_group}']
-    #         results[f'{sex}{age_group}_deseasonalised'] = unoccupied_deseasonalised / (occupied_deseasonalised + unoccupied_deseasonalised)
+            unoccupied_deseasonalised = deseasonalised_series[f'd{sex}{age_group}']
+            occupied_deseasonalised = deseasonalised_series[f'o{sex}{age_group}']
+            results[f'{sex}{age_group}_deseasonalised'] = unoccupied_deseasonalised / (occupied_deseasonalised + unoccupied_deseasonalised)
     
     # =========================================================================
     # PLOTTING
+    # =========================================================================
     
     import matplotlib.pyplot as plt
     
     model_name = 'x13' if args.x13 else 'stl' if args.stl else 'cissa'
     
+    col_meaning = {'dh15': 'desocupados hombres 15 a 24', 
+                'dm15': 'desocupados mujeres 15 a 24', 
+                'dh25': 'desocupados hombres 25 o más', 
+                'dm25': 'desocupados mujeres 25 o más', 
+                'oh15': 'ocupados hombres 15 a 24', 
+                'om15': 'ocupados mujeres 15 a 24', 
+                'oh25': 'ocupados hombres 25 o más', 
+                'om25': 'ocupados mujeres 25 o más',
+                'desocupados': 'total desocupados', 
+                'ocupados': 'total ocupados', 
+                'dh': 'desocupados hombres', 
+                'dm': 'desocupados mujeres', 
+                'oh': 'ocupados hombres', 
+                'om': 'ocupados mujeres', 
+                'ft_h': 'fuerza de trabajo hombres', 
+                'ft_m': 'fuerza de trabajo mujeres', 
+                'ft': 'fuerza de trabajo total',
+                'td_h': 'total desocupados hombres',
+                'td_m': 'total desocupados mujeres', 
+                'td': 'total desocupados'}
+    
     for series in data.columns:
         plt.figure(figsize=(6,4))
-        plt.title(f'{series} -- {model_name}')
+        plt.title(f'{col_meaning[series]} -- {model_name}')
         plt.plot(results[series], label='oficial', lw=1)
         plt.plot(results[series+'_std'], label='desestacionalizada', lw=1)
         plt.xlabel('date')
@@ -246,7 +245,9 @@ def main(args):
         plt.show()
     
     # =========================================================================
-    # Save results
+    # SAVE RESULTS
+    # =========================================================================
+
     output_file = os.path.join(args.output_dir, args.output)
     try:
         results.to_csv(output_file)
@@ -270,6 +271,7 @@ if __name__ == "__main__":
     parser.add_argument('--x13', action='store_true', default=False, help='Apply X13-ARIMA-SEATS decomposition')
     parser.add_argument('--stl', action='store_true', default=False, help='Apply STL decomposition')
     parser.add_argument('--cissa', action='store_true', default=False, help='Apply CiSSA decomposition')
+    parser.add_argument('-d', '--diagnose', action='store_true', default=False, help='Apply Diagnostics for every model of interest')
     parser.add_argument('--plot', action='store_true', help='Generate plots')
     parser.add_argument('--usetex', action='store_true', help='Use LaTeX for plot fonts')
     parser.add_argument('--verbose', action='store_true', help='Enable verbose output')
