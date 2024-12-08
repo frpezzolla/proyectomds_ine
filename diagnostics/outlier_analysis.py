@@ -78,25 +78,14 @@ class OutlierAnalysis():
         
         # Modelo X13-ARIMA
         # Desestacionalización Serie compuesta por parte OFICIAL-PRONOSTICO-OFICIAL (Prepandemia-Pandemia-Pospandemia)
-        # if seasonal_model.__name__== 'x13_arima_analysis':
         seasonal_model.fit(comp_serie)
         seasonal_model.adjust()
         comp_adj = seasonal_model.seasadj.copy()
 
-        # x13comp = seasonal_model(
-        #     endog=comp_serie,
-        #     maxorder=(1,1),
-        #     x12path=x13as_path,
-        #     outlier=False)
         # Predicción Serie Oficial
         seasonal_model.fit(serie)
         seasonal_model.adjust()
         real_adj = seasonal_model.seasadj.copy()
-        # x13real = seasonal_model(
-        #     endog=serie,
-        #     maxorder=(1,1),
-        #     x12path=x13as_path,
-        #     outlier=False)
     
         self.comp_adj = comp_adj if serie is None else self.comp_adj
         self.real_adj = real_adj if serie is None else self.real_adj

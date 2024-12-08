@@ -1,14 +1,15 @@
 from pandas import Series
 from statsmodels.tsa.x13 import x13_arima_analysis, X13Error
+import os
 from os import path
 from models.base import BaseModel
 import traceback
 
-x13as_path = path.abspath("C:/Program Files/x13as")
+
+x13as_path = os.getenv('X13PATH')
 class X13Model(BaseModel):
     def __init__(self, hiperparams:dict={'maxorder':(1,1), 'outlier':False}) -> None:
         super().__init__(hiperparams)
-        
     def adjust(self):
         try:
             self.model_obj = x13_arima_analysis(
@@ -22,7 +23,7 @@ class X13Model(BaseModel):
             raise e
         except Exception as e:
             print(type(e).__name__, traceback.format_exc(), sep=': ')
-            raise ValueError("Faltan hiperparámetros requeridos por el modelo")
+            raise ValueError("Required model hiperparameters missing")
         self._seasadj = self.model_obj.seasadj.rename('seasadj')
         return self
 

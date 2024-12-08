@@ -21,7 +21,7 @@ class ENE():
     def groupby_cae(self, tipo):
         if tipo!='anual' and tipo!='mensual':
             raise ValueError("Valores permitidos para tipo son: 'anual', 'mensual'")
-        csv_files = glob.glob(join(self.raw_path, tipo, '*.csv'))
+        csv_files = glob.glob(join(self.raw_path, tipo if tipo=='anual' else 'monthly', '*.csv'))
         if len(csv_files) == 0:
             return
         # csv_files = [f'./data/ano-{year}.csv' for year in range(2010, 2024)]
@@ -71,7 +71,7 @@ class ENE():
             tasa = pd.read_csv(join(self.preprocess_path, self.final_name), sep=';')
             agg_nivel = pd.concat([tasa, agg_nivel], axis=0)
             agg_nivel = agg_nivel.groupby(['ano','mes']).mean().reset_index()
-
+            
         agg_nivel = agg_nivel.round(3)
         agg_nivel.to_csv(join(self.preprocess_path, self.final_name), sep=";", index=False)         
 
@@ -120,21 +120,22 @@ class ENE():
             date = last_date + pd.DateOffset(months=i)
             trim = trim_movil[date.month]
             file_name = f"ene-{date.strftime(format='%Y-%m')}-{trim}.csv"
-            os.makedirs(join(self.raw_path, 'mensual'), exist_ok=True)
-            if not os.path.exists(join(self.raw_path, 'mensual', file_name)):
+            os.makedirs(join(self.raw_path, 'monthly'), exist_ok=True)
+            if not os.path.exists(join(self.raw_path, 'monthly', file_name)):
                 request_statement = f'https://www.ine.gob.cl/docs/default-source/ocupacion-y-desocupacion/bbdd/{date.year}/csv/{file_name}'
                 response = requests.get(request_statement)
                 if response.status_code != 200:
-                    logging.warning(f"Busqueda de archivos se detiene en fecha {date.year}-{date.month}")
+                    logging.warning(f"File download stopped on date {date.year}-{date.month}")
+                    break
                 else:
-                    logging.info(f"Busqueda de archivos para fecha {date.year}-{date.month}")
+                    logging.info(f"Downloading file for date {date.year}-{date.month}")
                 response = io.BytesIO(response.content, )
                 try:
                     new = pd.read_csv(response, sep=';', encoding='latin1', low_memory=False)
                 except pd.errors.ParserError as e:
-                    logging.info("Encuestas ENE actualizadas")
+                    logging.error("Check response content")
                     break
-                new.to_csv(join(self.raw_path, 'mensual', file_name), sep=';', index=False)
+                new.to_csv(join(self.raw_path, 'monthly', file_name), sep=';', index=False)
         
 
 if __name__=='__main__':

@@ -1,7 +1,8 @@
 from diagnostics import outlier_analysis as oa
-from pathlib import Path
 import pandas as pd
-
+import os
+from os.path import join, realpath
+import logging
 class Diagnose():
     def __init__(self, serie) -> None:
         self.serie = serie
@@ -16,17 +17,19 @@ class Diagnose():
         pass
 
     def outlier_diags(self, model):
-        print(f"Corriendo diagnostico para {model.__name__}")
+        logging.info(f"Running diagnostics for {model.__name__}")
         out_analist = oa.OutlierAnalysis()    
         span_analist = oa.SlidingOutliers(model())
         history_analist = oa.RevisionOutlier(model())
-        path = Path(f"./data/diagnostics/{self.end.replace('-', '')}/{model.__name__}")
-        path.mkdir(exist_ok=True)
+
+        results_path = join(realpath('.'), 'data', 'diagnostics', self.end.replace('-', ''), model.__name__)
+        os.makedirs(results_path, exist_ok=True)
+        
         out_analist.fit(self.serie, outlier=self.outlier)
         instance_model = model()
-        out_analist.model_evolution(instance_model).to_csv(path.joinpath('mse_comp_real.csv'))
+        out_analist.model_evolution(instance_model).to_csv(join(results_path, 'mse_comp_real.csv'))
 
-        with open(path.joinpath('metrics.md'), 'w', encoding='utf-8') as file:
+        with open(join(results_path,'metrics.md'), 'w', encoding='utf-8') as file:
             file.write(f"""## Diagnósticos para {model.__name__}, respecto a outlier {self.start}|{self.end}
 
             """)
@@ -56,13 +59,13 @@ $$max_j \\frac{A_t^j}{A_{t-1}^j} - min_j \\frac{A_t^j}{A_{t-1}^j}$$
             test = f"**Test MM%** todos los datos: {round(smma['pos_percentage'], 3)}\n"
             file.write(test)
 
-        saa['pre'].to_csv(path.joinpath('A%_pre.csv'))
-        saa['pos'].to_csv(path.joinpath('A%_pos.csv'))
+        saa['pre'].to_csv(join(results_path, 'A%_pre.csv'))
+        saa['pos'].to_csv(join(results_path, 'A%_pos.csv'))
 
-        smma['pre'].to_csv(path.joinpath('MM%_pre.csv'))
-        smma['pos'].to_csv(path.joinpath('MM%_pos.csv'))
+        smma['pre'].to_csv(join(results_path, 'MM%_pre.csv'))
+        smma['pos'].to_csv(join(results_path, 'MM%_pos.csv'))
 
 
         history_analist.fit(self.serie)
-        history_analist.A_analysis(outlier=self.outlier).to_csv(path.joinpath('RY.csv'))
-        history_analist.C_analysis(outlier=self.outlier).to_csv(path.joinpath('CY.csv'))
+        history_analist.A_analysis(outlier=self.outlier).to_csv(join(results_path, 'RY.csv'))
+        history_analist.C_analysis(outlier=self.outlier).to_csv(join(results_path, 'CY.csv'))

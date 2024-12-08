@@ -75,8 +75,8 @@ Los paquetes de Python requeridos se enumeran en el archivo `requirements.txt` e
 
 #### Windows
 
-- Descargue el binario de X13 desde el [sitio web de la Oficina del Censo de EE. UU.](https://www.census.gov/data/software/x13as.html).
-- Extraiga los archivos y coloque el ejecutable en un directorio incluido en la variable de entorno `PATH` de su sistema.
+- Descargue el binario de X13 (.ASCII) desde el [sitio web de la Oficina del Censo de EE. UU.](https://www.census.gov/data/software/x13as.html).
+- Extraiga los archivos y coloque el ejecutable en un directorio incluido en la variable de entorno `PATH` de su sistema. Llame a esta variable X13PATH.
 
 #### macOS y Linux
 
@@ -161,7 +161,11 @@ proyectomds_ine/
 ├── arguments.txt
 ├── main.py
 ├── data/
-│   └── (archivos de datos de entrada)
+│   ├── preprocess/(archivos de datos de entrada)
+│   ├── raw/
+│   │   ├── anual/
+│   │   └── monthly/
+│   └── diagnostics/
 ├── output/
 │   └── (resultados generados)
 ├── diagnostics/
@@ -180,6 +184,9 @@ proyectomds_ine/
 │   └── stl.py
 └── utils/
     ├── logging.py
+    ├── logging.py
+    ├── setup_logging.py
+    ├── preprocess.py
     └── plotting.py
 ```
 

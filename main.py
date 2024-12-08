@@ -18,6 +18,7 @@ from models.cissa import CiSSAModel
 
 from utils.setup_logging import setup as setup_logging
 from utils.diagnose import Diagnose
+from utils.preprocess import ENE
 
 def apply_x13(series, verbose=False):
     """Apply X13-ARIMA-SEATS decomposition to the provided series."""
@@ -63,7 +64,7 @@ def apply_cissa(series, verbose=False, save_decomposition=True):
 
 def import_data(file_dir):
     try:
-        data = pd.read_csv(file_dir)
+        data = pd.read_csv(file_dir, sep=';')
         data['date'] = pd.to_datetime(data['ano'].astype(str) + '-' + data['mes'].astype(str) + '-01')
         data.set_index('date', inplace=True)
         data.drop(['ano', 'mes'], axis=1, inplace=True)
@@ -73,7 +74,8 @@ def import_data(file_dir):
         sys.exit(1)
     except Exception as e:
         logging.error(f"An unexpected error occurred while reading the input file: {e}")
-        sys.exit(1)
+        # sys.exit(1)
+        raise e
     return data
 
 
@@ -101,8 +103,8 @@ def main(args):
     logging.info("Starting the STD process...")
     
     if not os.path.isfile(args.input):
-        logging.error(f"Input file '{args.input}' does not exist.")
-        sys.exit(1)
+        logging.warning(f"Input file '{args.input}' does not exist. Infering from anual and/or monthly data. This process may require connection to INE's public database.")
+        # sys.exit(1)
         
     os.makedirs(args.output_dir, exist_ok=True)
     os.makedirs(args.plot_dir, exist_ok=True)
@@ -112,7 +114,13 @@ def main(args):
     # TRANSFORM ENE
     # =========================================================================
 
-    pass
+    ene = ENE()
+    if not os.path.exists(args.input):
+        ene.groupby_cae('anual')
+    
+    logging.info("Downloading data from INE's ENE database.")
+    ene.nuevos_datos()
+    ene.groupby_cae('mensual')
 
     # =========================================================================
     # IMPORT DATA
@@ -157,46 +165,44 @@ def main(args):
                 deseasonalised_series[series+'_std'] = apply_cissa(data[series])
         except Exception as e:
             logging.error(f"CiSSA decomposition failed: {e}")
-            
     deseasonalised_df = pd.DataFrame(deseasonalised_series)
-    
     results = pd.concat([data, deseasonalised_df], axis=1)
-    print(results.head())
 
     # =========================================================================
     # RUN DIAGNOSTICS
     # =========================================================================
 
     if args.diagnose:
-        tasa = pd.read_csv("./data/endogena/to202406.csv")
-        tasa.index = pd.DatetimeIndex(tasa.pop('ds'))
-        tasa = tasa['to']
+        tasa = data[['td']].copy()
+        tasa.index.name = 'ds'
+        tasa = tasa['td']
 
+        # Pandemia
         outlier_serie = pd.Series(pd.date_range(start='2020-01-01', end='2022-05-01', freq='MS'))
         outlier_serie.index = pd.DatetimeIndex(outlier_serie)
         outlier_serie.loc[:] = 1
         diag = Diagnose(tasa)
         diag.set_outlier(outlier_serie)
+        
         # X13
         if args.x13:
             try:
                 diag.outlier_diags(X13Model)
             except Exception as e:
-                warnings.warn(traceback.format_exc())
+                logging.error(type(e).__name__, e.args)
 
         # STL
         if args.stl:
             try:
                 diag.outlier_diags(STLModel)
             except Exception as e:
-                warnings.warn(traceback.format_exc())
-
+                logging.error(type(e).__name__, e.args)
         # CISSA
         if args.cissa:
             try:
                 diag.outlier_diags(CiSSAModel)
             except Exception as e:
-                warnings.warn(traceback.format_exc())
+                logging.error(type(e).__name__, e.args)
 
     # =========================================================================
     # CALCULATE UNEMPLOYMENT RATES
@@ -207,10 +213,10 @@ def main(args):
         for age_group in ['15', '25']:
             unoccupied_original = results[f'd{sex}{age_group}']
             occupied_original = data[f'o{sex}{age_group}']
-            results[f'd_rate_{sex}{age_group}'] = unoccupied_original / (occupied_original + unoccupied_original)
+            results[f'td{sex}{age_group}'] = unoccupied_original / (occupied_original + unoccupied_original)
             unoccupied_deseasonalised = results[f'd{sex}{age_group}_std']
             occupied_deseasonalised = results[f'o{sex}{age_group}_std']
-            results[f'd_rate_{sex}{age_group}_std'] = unoccupied_deseasonalised / (occupied_deseasonalised + unoccupied_deseasonalised)
+            results[f'td{sex}{age_group}_std'] = unoccupied_deseasonalised / (occupied_deseasonalised + unoccupied_deseasonalised)
     
     # =========================================================================
     # PLOTTING
@@ -220,26 +226,28 @@ def main(args):
     
     model_name = 'x13' if args.x13 else 'stl' if args.stl else 'cissa'
     
-    col_meaning = {'dh15': 'desocupados hombres 15 a 24', 
-                'dm15': 'desocupados mujeres 15 a 24', 
-                'dh25': 'desocupados hombres 25 o más', 
-                'dm25': 'desocupados mujeres 25 o más', 
-                'oh15': 'ocupados hombres 15 a 24', 
-                'om15': 'ocupados mujeres 15 a 24', 
-                'oh25': 'ocupados hombres 25 o más', 
-                'om25': 'ocupados mujeres 25 o más',
-                'desocupados': 'total desocupados', 
-                'ocupados': 'total ocupados', 
-                'dh': 'desocupados hombres', 
-                'dm': 'desocupados mujeres', 
-                'oh': 'ocupados hombres', 
-                'om': 'ocupados mujeres', 
-                'ft_h': 'fuerza de trabajo hombres', 
-                'ft_m': 'fuerza de trabajo mujeres', 
-                'ft': 'fuerza de trabajo total',
-                'td_h': 'total desocupados hombres',
-                'td_m': 'total desocupados mujeres', 
-                'td': 'total desocupados'}
+    col_meaning = {
+        'dh15': 'desocupados hombres 15 a 24', 
+        'dm15': 'desocupados mujeres 15 a 24', 
+        'dh25': 'desocupados hombres 25 o más', 
+        'dm25': 'desocupados mujeres 25 o más', 
+        'oh15': 'ocupados hombres 15 a 24', 
+        'om15': 'ocupados mujeres 15 a 24', 
+        'oh25': 'ocupados hombres 25 o más', 
+        'om25': 'ocupados mujeres 25 o más',
+        'd': 'total desocupados', 
+        'o': 'total ocupados', 
+        'dh': 'desocupados hombres', 
+        'dm': 'desocupados mujeres', 
+        'oh': 'ocupados hombres', 
+        'om': 'ocupados mujeres', 
+        'fh': 'fuerza de trabajo hombres', 
+        'fm': 'fuerza de trabajo mujeres', 
+        'ft': 'fuerza de trabajo total',
+        'tdh': 'Tasa desocupados hombres',
+        'tdm': 'Tasa desocupados mujeres', 
+        'td': 'Tasa desocupados'
+        }
     
     for series in data.columns:
         plt.figure(figsize=(6,4))
