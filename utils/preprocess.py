@@ -18,14 +18,16 @@ class ENE():
         os.makedirs(self.preprocess_path, exist_ok=True)
         self.final_name = 'tasa_oficial.csv'
         
-    def cae(self, tipo):
+    def groupby_cae(self, tipo):
         if tipo!='anual' and tipo!='mensual':
             raise ValueError("Valores permitidos para tipo son: 'anual', 'mensual'")
         csv_files = glob.glob(join(self.raw_path, tipo, '*.csv'))
+        if len(csv_files) == 0:
+            return
         # csv_files = [f'./data/ano-{year}.csv' for year in range(2010, 2024)]
         # Añadir los archivos ENE enero-febrero-marzo y abril-mayo-junio de 2024
 
-        date_set = ['ano_trimestre', 'mes_central'] if tipo=='mensual' else ['ano_encuesta', 'mes_encuesta'] if tipo=='anual' else None 
+        date_set = ['ano_encuesta', 'mes_encuesta'] 
         columns = ['ano_trimestre', 'mes_central', 'ano_encuesta', 'mes_encuesta', 'sexo', 'cae_especifico', 'edad']
         agg_nivel = pd.DataFrame()
         # Leemos todos los csv en la lista de una vez, utilizando el sep=';' propio de las ENE trimestrales
@@ -43,16 +45,16 @@ class ENE():
             agg_nivel = pd.concat([agg_nivel, nivel], axis=0)
 
         agg_nivel.sort_index(inplace=True)
-        if tipo=='anual':
-            agg_nivel = self.trimestre_movil(agg_nivel)
-
+        if tipo=='mensual':
+            agg_nivel = agg_nivel.groupby(date_set).mean()
+        agg_nivel = self.trimestre_movil(agg_nivel)
         agg_nivel['d'] = agg_nivel[['dh15', 'dm15', 'dh25', 'dm25']].sum(axis=1)
         agg_nivel['o'] = agg_nivel[['oh15', 'om15', 'oh25', 'om25']].sum(axis=1)
         # 5. Calcular totales de desocupados y ocupados
-        agg_nivel['dh'] = desocupado[['dh15', 'dh25']].sum(axis=1)
-        agg_nivel['dm'] = desocupado[['dm15', 'dm25']].sum(axis=1)
-        agg_nivel['oh'] = ocupado[['oh15', 'oh25']].sum(axis=1)
-        agg_nivel['om'] = ocupado[['om15', 'om25']].sum(axis=1)
+        agg_nivel['dh'] = agg_nivel[['dh15', 'dh25']].sum(axis=1)
+        agg_nivel['dm'] = agg_nivel[['dm15', 'dm25']].sum(axis=1)
+        agg_nivel['oh'] = agg_nivel[['oh15', 'oh25']].sum(axis=1)
+        agg_nivel['om'] = agg_nivel[['om15', 'om25']].sum(axis=1)
 
         # 6. Calcular la fuerza de trabajo por sexo y total
         agg_nivel['fh'] = (agg_nivel['dh'] + agg_nivel['oh'])
@@ -67,8 +69,10 @@ class ENE():
         agg_nivel = agg_nivel.reset_index().rename(columns=dict(zip(date_set,['ano','mes'])))
         if tipo=='mensual':
             tasa = pd.read_csv(join(self.preprocess_path, self.final_name), sep=';')
-            agg_nivel = tasa.merge(agg_nivel, how='outer', on=['ano','mes'])
+            agg_nivel = pd.concat([tasa, agg_nivel], axis=0)
+            agg_nivel = agg_nivel.groupby(['ano','mes']).mean().reset_index()
 
+        agg_nivel = agg_nivel.round(3)
         agg_nivel.to_csv(join(self.preprocess_path, self.final_name), sep=";", index=False)         
 
     def nivel_estratificado(self, raw, estado, date_set):
@@ -100,11 +104,14 @@ class ENE():
 
         return nivel_movil.drop(columns='dias_mes').dropna(axis=0, how='all')
 
-    def nuevo_ene(self):
-        tasa = pd.read_csv(join(self.preprocess_path, self.final_name), sep=';')
-        ano_mes = tasa.loc[len(tasa)-1, ['ano', 'mes']].astype(int).astype(str).str.cat(sep='-')
-        del tasa
-        last_date = pd.to_datetime(ano_mes, format='%Y-%m')
+    def nuevos_datos(self):
+        if os.path.isfile(join(self.preprocess_path, self.final_name)):
+            tasa = pd.read_csv(join(self.preprocess_path, self.final_name), sep=';')
+            ano_mes = tasa.loc[len(tasa)-1, ['ano', 'mes']].astype(int).astype(str).str.cat(sep='-')
+            del tasa
+            last_date = pd.to_datetime(ano_mes, format='%Y-%m')
+        else:
+            last_date = pd.Timestamp(year=2010, month=1, day=1)
         trim_movil = {1:'def', 2:'efm', 3:'fma', 4:'mam', 5:'amj', 6:'mjj', 7:'jja', 8:'jas', 9:'aso', 10:'son', 11:'ond', 12:'nde'}
 
         i = 0
@@ -117,17 +124,21 @@ class ENE():
             if not os.path.exists(join(self.raw_path, 'mensual', file_name)):
                 request_statement = f'https://www.ine.gob.cl/docs/default-source/ocupacion-y-desocupacion/bbdd/{date.year}/csv/{file_name}'
                 response = requests.get(request_statement)
-                response = io.BytesIO(response.content)
+                if response.status_code != 200:
+                    logging.warning(f"Busqueda de archivos se detiene en fecha {date.year}-{date.month}")
+                else:
+                    logging.info(f"Busqueda de archivos para fecha {date.year}-{date.month}")
+                response = io.BytesIO(response.content, )
                 try:
-                    new = pd.read_csv(response, sep=';', low_memory=False)
+                    new = pd.read_csv(response, sep=';', encoding='latin1', low_memory=False)
                 except pd.errors.ParserError as e:
                     logging.info("Encuestas ENE actualizadas")
                     break
                 new.to_csv(join(self.raw_path, 'mensual', file_name), sep=';', index=False)
-                del new
         
 
 if __name__=='__main__':
     ene = ENE()
-    ene.cae('mensual')
-    # ene.nuevo_ene()
+    ene.groupby_cae('anual')
+    ene.nuevos_datos()
+    ene.groupby_cae('mensual')
