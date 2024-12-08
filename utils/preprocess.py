@@ -14,6 +14,8 @@ class ENE():
         self.data_path = join(realpath('.'), 'data')
         self.raw_path = join(self.data_path, 'raw')
         os.makedirs(self.raw_path, exist_ok=True)
+        os.makedirs(join(self.raw_path, 'monthly'), exist_ok=True)
+        os.makedirs(join(self.raw_path, 'anual'), exist_ok=True)
         self.preprocess_path = join(self.data_path, 'preprocess')
         os.makedirs(self.preprocess_path, exist_ok=True)
         self.final_name = 'tasa_oficial.csv'
