@@ -7,6 +7,7 @@ import shlex
 from pathlib import Path
 import warnings
 import traceback
+import shutil
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -276,57 +277,140 @@ def main(args):
 
 if __name__ == "__main__":
     
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    print("Comenzando proceso de desestacionalización...")
 
+    # =========================================================================
+    # INITIALISE PARSER
     parser = argparse.ArgumentParser(
         description="Process employment data with optional X13, STL, and CiSSA methods."
     )
-    parser.add_argument('-i', '--input', type=str, required=True, help='Input CSV file path')
-    parser.add_argument('-o', '--output', type=str, default='results.csv', help='Output CSV file name')
-    parser.add_argument('--output_dir', type=str, default='outputs', help='Output directory')
-    parser.add_argument('--plot_dir', type=str, default='plots', help='Directory to save plots')
-    parser.add_argument('--log_dir', type=str, default='logs', help='Directory to save logs')
-    parser.add_argument('--x13', action='store_true', default=False, help='Apply X13-ARIMA-SEATS decomposition')
-    parser.add_argument('--stl', action='store_true', default=False, help='Apply STL decomposition')
-    parser.add_argument('--cissa', action='store_true', default=False, help='Apply CiSSA decomposition')
-    parser.add_argument('-d', '--diagnose', action='store_true', default=False, help='Apply Diagnostics for every model of interest')
-    parser.add_argument('--plot', action='store_true', help='Generate plots')
-    parser.add_argument('--usetex', action='store_true', help='Use LaTeX for plot fonts')
-    parser.add_argument('--verbose', action='store_true', help='Enable verbose output')
-    parser.add_argument('--loglevel', type=str, default='INFO', help='Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)')
-    parser.add_argument('--logfile', type=str, default='', help='Log file name (if empty, logs to console)')
-
-    # Read arguments from 'arguments.txt' if it exists
-    args_list = []
-    if os.path.isfile('arguments.txt'):
+    
+    # =========================================================================
+    # SET DEFAULTS
+    DEFAULT_OUTPUT_NAME = "results.csv"
+    DEFAULT_OUTPUT_DIR = "output"
+    DEFAULT_LOG_LEVEL = "INFO"
+    DEFAULT_PLOT_DIR = "plot"
+    DEFAULT_DIAGNOSTICS_DIR = "diag"
+    DEFAULT_LOG_FILENAME = None
+    DEFAULT_VERBOSE_BOOL = True
+    DEFAULT_LOGFILE_DIR = 'log'
+    
+    # =========================================================================
+    # I/O
+    # INPUT FILE PATH (required)
+    parser.add_argument('-i', '--input', type=str, required=True, help='PATH al archivo de entrada.')
+    # TODO: mix the following two?
+    # desired OUTPUT FILE PATH
+    parser.add_argument('-o', '--output', type=str, default=DEFAULT_OUTPUT_NAME, help='Nombre deseado para el archivo de salida.')
+    # desired OUTPUT DIRECTORY for OUTPUT FILE
+    parser.add_argument('--output_dir', type=str, default=DEFAULT_OUTPUT_DIR, help="Directorio deseado para el archivo de salida. Por defecto: './outputs/'.")
+    
+    # =========================================================================
+    # SEASONAL TREND DECOMPOSITION METHOD
+    parser.add_argument('--x13', action='store_true', help='Aplica desestacionalización X13-ARIMA-SEATS.')
+    parser.add_argument('--stl', action='store_true', help='Aplica desestacionalización STL.')
+    parser.add_argument('--cissa', action='store_true', help='Aplica desestacionalización CiSSA.')
+    
+    # =========================================================================
+    # DIAGNOSTICS
+    # choose whether to run diagnosis
+    parser.add_argument('-d', '--diagnose', action='store_true', help='Aplica diagnósticos')
+    # desired LOGGING DIRECTORY for LOGGING FILE
+    parser.add_argument('--output_dir_diag', type=str, default=DEFAULT_DIAGNOSTICS_DIR, help="Directorio deseado para los resultados de diagnóstocos si '-d' o '--diagnose' es llamado. Por defecto: './diagnostics/'.")
+        
+    # =========================================================================
+    # LOGGING ARGUMENTS
+    # SET LOG LEVEL
+    parser.add_argument('--log_level', type=str, default=DEFAULT_LOG_LEVEL, help='Nivel de logging (DEBUG, INFO, WARNING, ERROR, CRITICAL)')
+    # desired LOG FILE PATH
+    parser.add_argument('--log_filename', type=str, default=DEFAULT_LOG_FILENAME, help='Archivo para guardar logs (si se entrega vacío, solo se utiliza la consola)')
+    # choose if the logging is verbose
+    parser.add_argument('--verbose', action='store_true', default=DEFAULT_VERBOSE_BOOL, help="Habilita output 'verbose' para logging")
+    # desired LOGGING FILE PATH
+    parser.add_argument('--log_dir', type=str, default=DEFAULT_LOGFILE_DIR, help="Directorio de salida para logging si '--log_name' es entregado. Por defecto: './logs/'.")
+    
+    # =========================================================================
+    # PLOTTING
+    # choose whether to plot
+    parser.add_argument('--plot', action='store_true', help="Genera gráficos y los guarda según '--plot_dir'")
+    # desired PLOT DIRECTORY
+    parser.add_argument('--plot_dir', type=str, default=DEFAULT_PLOT_DIR, help="Directorio de salida para los gráficos generados. Por defecto: './plots/'.")
+    # choose wether to use LaTeX for typesetting
+    parser.add_argument('--use_tex', action='store_true', help='Habilita LaTeX como la fuente usada para los gráficos')
+    
+    # =========================================================================
+    # CHECK ARGUMENTS
+    
+    # Check if command line arguments have been provided
+    # If they have, then those are used
+    # If they haven´t, then 'arguments.txt' is checked
+    # If neither contains arguments, an error is raised
+    # TODO: Fijarme en input
+    # TODO: change sys.exit for warning/errors so it shows the entire traceback
+    if len(sys.argv) > 1:
+        args = parser.parse_args()
+        # logging.info("Usando los comandos proporcionados en la consola.")
+        print("Usando los comandos proporcionados en la consola.")
+    elif os.path.isfile('arguments.txt'):
         try:
             with open('arguments.txt', 'r') as f:
                 arg_str = f.read()
                 args_list = shlex.split(arg_str)
-                logging.info("Arguments read from 'arguments.txt'")
+                args = parser.parse_args(args_list)
+                # logging.info("No se han proporcionado comandos desde la consola. Obteniendo argumentos desde 'arguments.txt'.")
+                print("No se han proporcionado comandos desde la consola. Obteniendo argumentos desde 'arguments.txt'.")
         except Exception as e:
-            logging.error(f"Error reading arguments from file: {e}")
+            # logging.error(f"Error en la lectura de 'arguments.txt': {e}")
+            print(f"Error en la lectura de 'arguments.txt': {e}")
             sys.exit(1)
     else:
-        logging.info("'arguments.txt' not found. Proceeding with command-line arguments.")
+        # logging.error("No se han entregado argumentos de consola y 'arguments.txt' está vacío. Puedes consultar 'python main.py --help' si necesitas ayuda.")
+        print("No se han entregado argumentos de consola y 'arguments.txt' está vacío. Puedes consultar 'python main.py --help' si necesitas ayuda.")
+        sys.exit(1)
+        
+        
+    # Handle logging input        
+    logging_level_dict = {'DEBUG': logging.DEBUG,
+                          'INFO': logging.INFO,
+                          'WARNING': logging.WARNING,
+                          'ERROR': logging.ERROR,
+                          'CRITICAL': logging.CRITICAL}
+    
+    # Determine log file path
+    LOG_FILENAME = os.path.join(args.log_dir, args.log_filename) if args.log_filename else None
+    
+    # Check and apply the logging level
+    if args.log_level.upper() in logging_level_dict:
+        logging.basicConfig(filename=LOG_FILENAME,
+                            level=logging_level_dict[args.log_level.upper()],
+                            format='%(asctime)s - %(levelname)s - %(message)s')
+        logging.info(f"Iniciando logging con nivel: {args.log_level.upper()}")
+    else:
+        logging.basicConfig(filename=LOG_FILENAME,
+                            level=logging.INFO,
+                            format='%(asctime)s - %(levelname)s - %(message)s')
+        logging.info(f"Nivel de logging '--log_level' inválido: {args.log_level}. Usando el nivel por defecto: 'INFO'.")
 
-    # Combine arguments from the file with any command-line arguments
-    # Command-line arguments take precedence
-    combined_args = args_list + sys.argv[1:]
+        
+    # Check if only one STD method has been called
+    # If more than one, raise an Exception and abort
+    std_methods = [args.x13, args.stl, args.cissa]
+    if sum(std_methods) > 1:
+        logging.error("Solo se puede seleccionar un método de desestacionalización a la vez (--x13, --stl, --cissa).")
+        sys.exit(1)
+    elif not any(std_methods):
+        logging.error("Debe seleccionar al menos un método de desestacionalización (--x13, --stl, --cissa).")
+        sys.exit(1)
+    
+    # Check LaTeX
+    if args.use_tex and not shutil.which('latex'):
+        logging.error("No se ha encontrado una instalación de LaTeX en el sistema. "
+                      "Instale LaTeX e intente de nuevo, u omita el argumento '--usetex'.")
+        sys.exit(1)
+        
 
-    # Parse the combined arguments
-    # Use parse_known_args to avoid issues with unknown arguments
-    args, unknown = parser.parse_known_args(combined_args)
-
-    # Now that we have args, we can set up logging properly
-    # setup_logging(args.loglevel, args.logfile)
-    logging.info("Logging is configured.")
-
-    # If there are unknown arguments, log a warning
-    if unknown:
-        logging.warning(f"Unknown arguments encountered and ignored: {unknown}")
-
-    # Proceed to main function
+            
     main(args)
 
 # python main.py input_file output_file --x13 --stl --cissa --verbose
