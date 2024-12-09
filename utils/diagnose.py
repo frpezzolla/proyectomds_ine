@@ -37,12 +37,12 @@ class Diagnose():
 Contraste de entrenamiento entre modelo con datos hasta la pandemia ({self.start}), y modelo con datos hasta último registro
             """)
             file.write(
-"Diagnostivo Slidings Spans. MSE entre valores A\% para los dos modelos, de la forma"
+r"Diagnostivo Slidings Spans. MSE entre valores A% para los dos modelos, de la forma"
 "$$\\frac{max_j A_t^j - min_j A_t^j}{min_j A_t^j}$$")
             mse = f"**MSE**: {str(span_analist.A_mse(self.serie, outlier=self.outlier))}\n\n"
             file.write(mse)
             file.write(
-"Diagnostivo Slidings Spans. MSE entre valores MM\% para los dos modelos, de la forma"
+r"Diagnostivo Slidings Spans. MSE entre valores MM% para los dos modelos, de la forma"
 "$$max_j \\frac{A_t^j}{A_{t-1}^j} - min_j \\frac{A_t^j}{A_{t-1}^j}$$")
             mse = f"**MSE**: {str(span_analist.MM_mse(self.serie, outlier=self.outlier))}\n\n"
             file.write(mse)
