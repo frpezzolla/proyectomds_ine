@@ -5,6 +5,7 @@ import time
 import sys
 import shlex
 import shutil
+from tqdm import tqdm
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -173,7 +174,8 @@ def main(args):
     # =========================================================================
     deseasonalised_series = {}
     
-    for series_name in data.columns:
+    # Use tqdm to show progress as we process each series_name
+    for series_name in tqdm(data.columns, desc="Desestacionalizando series"):
         series = data[series_name]
         logging.info(f"Iniciando desestacionalización para la serie: {series_name}")
         
@@ -269,8 +271,8 @@ def main(args):
         sys.exit(1)
     
     try:
-        for sex in ['h', 'm']:
-            for age_group in ['15', '25']:
+        for sex in tqdm(['h', 'm'], desc="Por sexo"):
+            for age_group in tqdm(['15', '25'], desc="Por grupo etario", leave=False):
                 # Extract original and deseasonalised data
                 unoccupied_original = results[f'd{sex}{age_group}']
                 occupied_original = data[f'o{sex}{age_group}']
@@ -342,7 +344,8 @@ def main(args):
         }
         
         try:
-            for series in data.columns:
+            # Wrap the iteration over data.columns with tqdm for a progress bar
+            for series in tqdm(data.columns, desc="Generating plots"):
                 if series in results.columns and f"{series}_std" in results.columns:
                     plot_series(
                         original_series=results[series],
@@ -356,6 +359,7 @@ def main(args):
                     logging.warning(f"Faltan datos para graficar la serie '{col_meaning.get(series, series)}'.")
         except Exception as e:
             logging.error(f"Error al generar gráficos: {type(e).__name__}: {e}", exc_info=args.show_traceback)
+
 
     
     # =========================================================================
@@ -402,11 +406,15 @@ if __name__ == "__main__":
     # =========================================================================
     # INITIALISE TEMPORARY LOGGING
     
-    logging.basicConfig(level=logging.ERROR, 
-                        format='%(asctime)s - %(levelname)s - %(message)s', 
-                        stream=sys.stdout)
-    logging.info("Activando logging temporal.")
-
+    # logging.basicConfig(level=logging.ERROR, 
+    #                     format='%(asctime)s - %(levelname)s - %(message)s', 
+    #                     stream=sys.stdout)
+    # logging.info("Activando logging temporal.")
+    
+    print("Activando logging temporal (en consola, nivel ERROR).")
+    logging.basicConfig(level=logging.ERROR,
+                    format='%(asctime)s - %(levelname)s - %(message)s',
+                    stream=sys.stdout)
     # =========================================================================
     # SET DEFAULTS
     DEFAULT_OUTPUT_NAME = "results.csv"
@@ -496,32 +504,61 @@ if __name__ == "__main__":
         logging.error(f"Se produjo un error durante la configuración de los argumentos: {e}", exc_info=True)
         sys.exit(1)
     
+    
     # =========================================================================
     # Handle logging input        
-    logging_level_dict = {'DEBUG': logging.DEBUG,
-                          'INFO': logging.INFO,
-                          'WARNING': logging.WARNING,
-                          'ERROR': logging.ERROR,
-                          'CRITICAL': logging.CRITICAL}
-    # Determine log file path
-    LOG_FILENAME = os.path.join(args.log_dir, args.log_filename) if args.log_filename else None
-    # Check and apply the logging level
-    if args.log_level.upper() in logging_level_dict:
-        logging.basicConfig(filename=LOG_FILENAME,
-                            level=logging_level_dict[args.log_level.upper()],
-                            format='%(asctime)s - %(levelname)s - %(message)s')
-        logging.info(f"Iniciando logging con nivel: {args.log_level.upper()}")
-    else:
-        logging.basicConfig(filename=LOG_FILENAME,
-                            level=logging.INFO,
-                            format='%(asctime)s - %(levelname)s - %(message)s')
-        logging.info(f"Nivel de logging '--log_level' inválido: {args.log_level}. Usando el nivel por defecto: 'INFO'.")
-    # Create log directory if needed
+    # logging_level_dict = {'DEBUG': logging.DEBUG,
+    #                       'INFO': logging.INFO,
+    #                       'WARNING': logging.WARNING,
+    #                       'ERROR': logging.ERROR,
+    #                       'CRITICAL': logging.CRITICAL}
+    # # Determine log file path
+    # LOG_FILENAME = os.path.join(args.log_dir, args.log_filename) if args.log_filename else None
+    # # Check and apply the logging level
+    # if args.log_level.upper() in logging_level_dict:
+    #     logging.basicConfig(filename=LOG_FILENAME,
+    #                         level=logging_level_dict[args.log_level.upper()],
+    #                         format='%(asctime)s - %(levelname)s - %(message)s')
+    #     logging.info(f"Iniciando logging con nivel: {args.log_level.upper()}")
+    # else:
+    #     logging.basicConfig(filename=LOG_FILENAME,
+    #                         level=logging.INFO,
+    #                         format='%(asctime)s - %(levelname)s - %(message)s')
+    #     logging.info(f"Nivel de logging '--log_level' inválido: {args.log_level}. Usando el nivel por defecto: 'INFO'.")
+    # # Create log directory if needed
+    # if args.log_filename:
+    #     if not os.path.exists(args.log_dir):
+    #         os.makedirs(args.log_dir, exist_ok=True)
+    #         logging.info(f"Directorio de logs creado: {args.log_dir}")
+    
+    
     if args.log_filename:
         if not os.path.exists(args.log_dir):
             os.makedirs(args.log_dir, exist_ok=True)
             logging.info(f"Directorio de logs creado: {args.log_dir}")
     
+    logging_level_dict = {'DEBUG': logging.DEBUG,
+                          'INFO': logging.INFO,
+                          'WARNING': logging.WARNING,
+                          'ERROR': logging.ERROR,
+                          'CRITICAL': logging.CRITICAL}
+    
+    LOG_FILENAME = os.path.join(args.log_dir, args.log_filename) if args.log_filename else None
+    
+    # Now reconfigure logging with force=True to override the previous config.
+    if args.log_level.upper() in logging_level_dict:
+        logging.basicConfig(filename=LOG_FILENAME,
+                            level=logging_level_dict[args.log_level.upper()],
+                            format='%(asctime)s - %(levelname)s - %(message)s',
+                            force=True)
+        logging.info(f"Iniciando logging con nivel: {args.log_level.upper()}")
+    else:
+        logging.basicConfig(filename=LOG_FILENAME,
+                            level=logging.INFO,
+                            format='%(asctime)s - %(levelname)s - %(message)s',
+                            force=True)
+        logging.info(f"Nivel de logging '--log_level' inválido: {args.log_level}. Usando el nivel por defecto: 'INFO'.")
+
     # =========================================================================
     # Check if input file has been provided
     if not args.input:
@@ -551,7 +588,7 @@ if __name__ == "__main__":
     
 
         
-    # =========================================================================    
+    # =========================================================================
     main(args)
 
 # python main.py input_file output_file --x13 --stl --cissa --verbose
