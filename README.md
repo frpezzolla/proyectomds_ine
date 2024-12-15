@@ -1,4 +1,4 @@
-# Proyecto de Ciencia de Datos: Ajuste estacional de la tasa de desocupación para el Instituto Nacional de Estadísticas
+# Proyecto de Ciencia de Datos: Ajuste Estacional de la Tasa de Desocupación para el Instituto Nacional de Estadísticas
 
 ## Descripción del Proyecto
 
@@ -29,11 +29,13 @@ La herramienta permite desestacionalizar las series de empleo y desempleo, calcu
 - **Manejo de Errores**: Manejo robusto de errores para operaciones de archivos y procesamiento de datos.
 - **Registro de Eventos (Logging)**: Registro configurable en consola o archivo con diferentes niveles de detalle.
 - **Generación de Gráficos**: Funcionalidad opcional para generar gráficos de las series originales y sus componentes de tendencia, con soporte para fuentes formateadas en LaTeX.
+- **Indicadores de Progreso**: Visualiza el progreso de la desestacionalización y el cálculo de tasas mediante barras de progreso con `tqdm`.
 
 ## Instalación
 
 ### Requisitos Previos
-- Windows
+
+- **Windows**
 - **Python 3.8 a 3.12**
 - Instalador de paquetes **pip**
 - **Git** (opcional, para clonar el repositorio)
@@ -47,7 +49,7 @@ Los paquetes de Python requeridos se enumeran en el archivo `requirements.txt` e
 - `matplotlib`
 - `statsmodels`
 - `scipy`
-- ...
+- `tqdm`
 
 ### Pasos de Instalación
 
@@ -71,32 +73,20 @@ Los paquetes de Python requeridos se enumeran en el archivo `requirements.txt` e
    pip install -r requirements.txt
    ```
 
+4. **Verificación de la Instalación**
+
+   ```bash
+   python main.py --help
+   ```
+
+   Deberías ver el mensaje de ayuda con las opciones disponibles.
+
 ### Configuración de X13-ARIMA-SEATS
 
 #### Windows
 
 - Descargue el binario de X13 (.ASCII) desde el [sitio web de la Oficina del Censo de EE. UU.](https://www.census.gov/data/software/x13as.html).
-- Extraiga los archivos y coloque el ejecutable en un directorio incluido en la variable de entorno `PATH` de su sistema. Llame a esta variable X13PATH.
-
-#### macOS y Linux
-
-- Instale X13 mediante `conda`:
-
-  ```bash
-  conda install -c conda-forge x13as
-  ```
-
-- Alternativamente, descargue y compile el código fuente desde el [sitio web de la Oficina del Censo de EE. UU.](https://www.census.gov/data/software/x13as.html).
-
-### Verificación de la Instalación
-
-Ejecute el siguiente comando para verificar que la instalación fue exitosa:
-
-```bash
-python main.py --help
-```
-
-Debería ver el mensaje de ayuda con instrucciones de uso y opciones disponibles.
+- Extraiga los archivos y coloque el ejecutable en un directorio incluido en la variable de entorno `PATH` de su sistema. Llame a esta variable `X13PATH`.
 
 ## Uso
 
@@ -104,11 +94,12 @@ Debería ver el mensaje de ayuda con instrucciones de uso y opciones disponibles
 
 La herramienta se ejecuta a través del script `main.py` con las siguientes opciones:
 
-- `-i`, `--input`: Ruta del archivo CSV de entrada (requerido).
+- `-i`, `--input`: Ruta del archivo CSV de entrada (requerido). Actualmente **el archivo debe estar ubicado en `data/preprocess`.**
 - `-o`, `--output`: Nombre del archivo CSV de salida (por defecto: `results.csv`).
-- `--output_dir`: Directorio de salida (por defecto: `outputs`).
-- `--plot_dir`: Directorio para guardar los gráficos (por defecto: `plots`).
-- `--log_dir`: Directorio para guardar los registros (por defecto: `logs`).
+- `--output_dir`: Directorio de salida (por defecto: `output`).
+- `--output_dir_diag`: Directorio deseado para los resultados de diagnósticos si se usa `-d` o `--diagnose` (por defecto: `diag`).
+- `--plot_dir`: Directorio para guardar los gráficos (por defecto: `plot`).
+- `--log_dir`: Directorio para guardar los registros (por defecto: `log`).
 - `--x13`: Aplica el método X13-ARIMA-SEATS.
 - `--stl`: Aplica el método STL.
 - `--cissa`: Aplica el método CiSSA.
@@ -117,40 +108,69 @@ La herramienta se ejecuta a través del script `main.py` con las siguientes opci
 - `--verbose`: Habilita salida detallada.
 - `--loglevel`: Nivel de registro (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`).
 - `--logfile`: Nombre del archivo de registro (si se deja vacío, registra en la consola).
+- `--show_traceback`: Habilita mostrar el Traceback de errores para debugging.
 
 ### Formato de los Datos de Entrada
 
+El archivo de entrada debe ser un archivo CSV con las siguientes columnas:
+
+- `ano`: Año (numérico).
+- `mes`: Mes (numérico).
+- Otras columnas representando categorías de ocupados y desocupados, siguiendo la nomenclatura utilizada en el código (e.g., `dh15`, `dm15`, `oh15`, etc.).
+
 ### Ejemplos
 
-#### Ejemplo 1: Aplicar Todos los Métodos de Descomposición con Generación de Gráficos
+#### Ejemplo 1: Aplicar X13-ARIMA-SEATS con Generación de Gráficos
 
 ```bash
-python main.py -i data/datos_empleo.csv --x13 --stl --cissa --plot --usetex --loglevel INFO
+python main.py -i datos_empleo.csv --x13 --plot --usetex --loglevel INFO
 ```
 
-- Aplica los métodos X13-ARIMA-SEATS, STL y CiSSA.
+- Aplica el método X13-ARIMA-SEATS.
 - Genera gráficos con fuentes formateadas en LaTeX.
 - Establece el nivel de registro en INFO.
+- Guarda los gráficos en `plot/` y los resultados en `output/results.csv`.
 
-#### Ejemplo 2: Aplicar Solo CiSSA y Guardar Registros en un Archivo
+#### Ejemplo 2: Aplicar CiSSA y Guardar Registros en un Archivo
 
 ```bash
-python main.py -i data/datos_empleo.csv -o resultados_cissa.csv --cissa --logfile logs/cissa.log --loglevel DEBUG
+python main.py -i datos_empleo.csv -o resultados_cissa.csv --cissa --logfile cissa.log --log_dir logs --loglevel DEBUG
 ```
 
 - Aplica solo el método CiSSA.
 - Guarda los registros en `logs/cissa.log`.
 - Establece el nivel de registro en DEBUG para registros detallados.
+- Guarda los resultados en `output/resultados_cissa.csv`.
 
 #### Ejemplo 3: Aplicar Descomposición STL Sin Generar Gráficos
 
 ```bash
-python main.py -i data/datos_empleo.csv --stl
+python main.py -i datos_empleo.csv --stl
 ```
 
 - Aplica solo el método STL.
 - No genera gráficos.
-- Utiliza el archivo de salida y directorios por defecto.
+- Utiliza el archivo de salida y directorios por defecto (`output/results.csv`, `plot/`, `log/`).
+
+#### Ejemplo 4: Uso de `arguments.txt`
+
+Si no pasas argumentos por la consola, el script intentará leer `arguments.txt`. Un ejemplo de `arguments.txt`:
+
+```
+-i datos_empleo.csv
+--stl
+--diagnose
+--loglevel DEBUG
+--output_dir custom_outputs
+```
+
+Correr:
+
+```bash
+python main.py
+```
+
+Usará los argumentos definidos en `arguments.txt`.
 
 ## Estructura del Proyecto
 
@@ -161,7 +181,7 @@ proyectomds_ine/
 ├── arguments.txt
 ├── main.py
 ├── data/
-│   ├── preprocess/(archivos de datos de entrada)
+│   ├── preprocess/         # Archivos de datos de entrada
 │   ├── raw/
 │   │   ├── anual/
 │   │   └── monthly/
@@ -184,35 +204,30 @@ proyectomds_ine/
 │   └── stl.py
 └── utils/
     ├── logging.py
-    ├── logging.py
     ├── setup_logging.py
     ├── preprocess.py
     └── plotting.py
 ```
 
-## Licencia
-
-Este proyecto está licenciado bajo la **Licencia MIT**. Consulta el archivo `LICENSE` para más detalles.
-
 ## Información de Contacto
 
 Para cualquier pregunta o soporte, por favor contacta a:
 
-- Alonso Uribe
-  - Correo electrónico: [mail]()
-  - GitHub: [link]()
-- Fabrizzio Pezzolla
-  - Correo electrónico: [mail]()
-  - GitHub: [link]()
-- Israel Astudillo
-  - Correo electrónico: [mail]()
-  - GitHub: [link]()
-- Rodrigo Molina
-  - Correo electrónico: [mail]()
-  - GitHub: [link]()
+- **Alonso Uribe**
+  - Correo electrónico: [mail](https://github.com/alonsoU)
+  - GitHub: [link](mailto:alonso.uribe@ug.uchile.cl)
+- **Fabrizzio Pezzolla**
+  - Correo electrónico: [mail](mailto:frpezzoll@gmail.com)
+  - GitHub: [link](https://github.com/frpezzolla)
+- **Israel Astudillo**
+  - Correo electrónico: [mail](mailto:israel.astudillo@ug.uchile.cl)
+  - GitHub: [link](https://github.com/IsraPKMNPAP)
+- **Rodrigo Molina**
+  - Correo electrónico: [mail](mailto:rodmolina@ug.uchile.cl)
+  - GitHub: [link](https://github.com/RodrigoMolinaAvila)
 
 ## Agradecimientos
 
 - **pyCiSSA**: [pyCiSSA](https://github.com/LukeAFullard/pyCiSSA.git) por Luke A. Fullard.
-- **X13-ARIMA-SEATS**: Proporcionado por la Oficina del Censo de EE. UU.
+- **X13-ARIMA-SEATS**: Proporcionado por la Oficina del Censo de EE. UU. e implementada usando la biblioteca `statsmodels`.
 - **Descomposición STL**: Implementada utilizando la biblioteca `statsmodels`.
